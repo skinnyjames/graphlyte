@@ -1,9 +1,11 @@
 require_relative "#{__dir__}/../lib/graphlyte"
 require "rspec"
 
+host = ENV["HOST"] || "localhost"
+
 module Request
   def request(json)
-    RestClient.post("http://localhost:5000", json, { 'Content-Type' => "application/json" })
+    RestClient.post("http://#{host}:5000", json, { 'Content-Type' => "application/json" })
   end
 end
 
