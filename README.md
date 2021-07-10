@@ -1,4 +1,5 @@
 # graphlyte
+[![Build Status](http://drone.skinnyjames.net/api/badges/skinnyjames/graphlyte/status.svg)](http://drone.skinnyjames.net/skinnyjames/graphlyte)
 
 Craft composable graphql queries using ruby
 
