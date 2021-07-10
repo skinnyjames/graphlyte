@@ -7,7 +7,7 @@ Craft composable graphql queries using ruby
 
 in your Gemfile
 
-`gem graphlyte`
+`gem "graphlyte"`
 
 ## usage
 
