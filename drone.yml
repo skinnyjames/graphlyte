@@ -19,6 +19,6 @@ steps:
     - bundle install
     - rspec
   environment: 
-    HOST: server
+    HOST: "server"
   depends_on: 
     - server
