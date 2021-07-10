@@ -1,0 +1,36 @@
+{
+  "todo": [
+    {
+      "id": 1,
+      "title": "Lorem Ipsum",
+      "status":"open"
+    },
+    {
+      "id": 2,
+      "title": "Sic Dolor amet",
+      "status":"open"
+    }
+  ],
+  "users": [
+    {
+      "id": 123,
+      "name": "John Doe"
+    },
+    {
+      "id": 456,
+      "name": "Jane Doe"
+    }
+  ],
+  "done": [
+    {
+      "id": "foo",
+      "name": "Foo",
+      "status":"completed"
+    },
+    {
+      "id": "bar",
+      "name": "Bar",
+      "status":"completed"
+    }
+  ]
+}
