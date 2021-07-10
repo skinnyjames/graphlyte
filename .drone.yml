@@ -16,6 +16,7 @@ steps:
 - name: agent_1
   image: ruby:3.0
   commands: 
+    - sleep 5
     - bundle install
     - rspec
   environment: 
