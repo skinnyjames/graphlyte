@@ -85,7 +85,7 @@ module Graphlyte
     
     def format_fragments
       str = ""
-      flatten(@fields).each do |fragment|
+      flatten(@fields).each do |_, fragment|
         str += "\nfragment #{fragment.name}"
         str += " on #{fragment._model_name}" unless fragment._model_name.nil?
         str += " {\n#{fragment._fields.map {|f| f.to_s(1) }.join("\n")}\n}"
@@ -93,16 +93,16 @@ module Graphlyte
       str
     end
 
-    def flatten(fields=@fields,  new_fields = [])
+    def flatten(fields=@fields, new_fields = {})
       fields.each do |field|
         if field.class.eql?(Fragment)
-          new_fields << field
+          new_fields[field.name] = field
           unless field._fields.empty?
             flatten(field._fields, new_fields)
           end
         else
           if field.value.class.eql?(Fragment)
-            new_fields << field.value
+            new_fields[field.value.name] = field.value
             flatten(field.value._fields, new_fields) unless field.value._fields.empty?
           else
             flatten(field.value._fields, new_fields) unless field.value._fields.empty?
