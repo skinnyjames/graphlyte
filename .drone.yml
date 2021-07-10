@@ -12,6 +12,8 @@ steps:
   environment: 
     NODE_HOST: 0.0.0.0
     NODE_PORT: 5000
+  ports: 
+  - 5000
     
 - name: agent_1
   image: ruby:3.0
