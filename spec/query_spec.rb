@@ -9,6 +9,22 @@ describe Graphlyte do
     end
   end
 
+  it "should convert snake_case to camelCase" do
+    query = Graphlyte.query do |b|
+      b.snake_case_works
+      b.__type_name
+      b.type_name__
+      b.User # can't avoid this
+    end
+    expect(query.to_s).to eql(<<~STRING)
+    {
+      snakeCaseWorks
+      __typeName
+      typeName__
+      User
+    }
+    STRING
+  end
 
   it "should support buik queries" do 
     query_1 = Graphlyte.query do |b|

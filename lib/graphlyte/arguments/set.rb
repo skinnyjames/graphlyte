@@ -41,7 +41,6 @@ module Graphlyte
           memo
         end
       end
-      # end method
     end
   end
 end
