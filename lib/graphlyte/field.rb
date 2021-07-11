@@ -1,10 +1,10 @@
-require_relative "./arguments"
+require_relative "./arguments/set"
 
 module Graphlyte
   class Field
     attr_reader :name, :fieldset, :inputs, :alias
 
-    def initialize(name, fieldset, hargs, inputs: Arguments.new(hargs))
+    def initialize(name, fieldset, hargs, inputs: Arguments::Set.new(hargs))
       @name = name
       @fieldset = fieldset
       @inputs = inputs
@@ -26,11 +26,10 @@ module Graphlyte
       if @alias
         str += "#{actual_indent}#{@alias}: #{name}"
         str += inputs.to_s.empty? ? "()" : inputs.to_s 
-        str += " "
       else
         str += "#{actual_indent}#{name}#{inputs.to_s}"
       end
-      str += "{\n#{fieldset.to_s(indent + 1)}#{actual_indent}\n#{actual_indent}}" unless atomic?
+      str += " {\n#{fieldset.to_s(indent + 1)}\n#{actual_indent}}" unless atomic?
       str
     end
   end

@@ -22,7 +22,7 @@ module Graphlyte
     end
 
     def to_s(indent=0)
-      fields.map { |field| field.to_s(indent)}.join("\n")
+      fields.map { |field| field.to_s(indent) }.join("\n")
     end
   end
 end

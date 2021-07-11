@@ -13,11 +13,11 @@ module Graphlyte
     end
 
     def to_s(indent=0)
-      "{\n#{super(indent + 1)}\n}\n#{format_fragments}\n"
+      "{\n#{super(indent + 1)}\n}#{format_fragments}"
     end
     
     def format_fragments
-      str = ""
+      str = "\n"
       flatten(builder.>>).each do |_, fragment|
         str += "\nfragment #{fragment.fragment}"
         str += " on #{fragment.model_name}" unless fragment.model_name.nil?
