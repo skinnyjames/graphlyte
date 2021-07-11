@@ -14,11 +14,11 @@ in your Gemfile
 ```ruby
 # Basic query
 query = Graphlyte.query do
-  q.all_todos do
+  all_todos do
     # specify fields for your query
-    q.id
-    q.status
-    q.title
+    id
+    status
+    title
   end
 end
 
@@ -49,8 +49,8 @@ RestClient.post("http://localhost", query.to_json, { "Content-Type" => "applicat
 
 ```ruby
 extra_fields = Graphlyte.fragment('extraFields', "Todo") do
-  f.id
-  f.status
+  id
+  status
 end
 
 # pass a block parameter if you want to merge/spread fieldsets or fragments
