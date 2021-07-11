@@ -53,12 +53,12 @@ describe Graphlyte do
   end
 
   it "should support aliases and input" do 
-    query = Graphlyte.query do |q|
-      q.User(id: 123).alias("sean") do |u|
-        u.id
+    query = Graphlyte.query do
+      User(id: 123).alias("sean") do
+        id
       end
-      q.User(id: 456).alias("bob") do |u|
-        u.id
+      User(id: 456).alias("bob") do
+        id
       end
     end
 

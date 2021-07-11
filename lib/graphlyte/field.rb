@@ -17,7 +17,7 @@ module Graphlyte
 
     def alias(name, &block)
       @alias = name
-      block.call(fieldset.builder) if block
+      fieldset.builder.>.instance_eval(&block) if block
     end
 
     def to_s(indent=0)

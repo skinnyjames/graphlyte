@@ -1,8 +1,8 @@
 describe Graphlyte do 
   it "should support integers" do 
-    query = Graphlyte.query do |q|
-      q.arguments(int: 1) do |i|
-        i.id
+    query = Graphlyte.query do
+      arguments(int: 1) do
+        id
       end 
     end
     expect(query.to_s).to eql(<<~STRING)
