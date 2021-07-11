@@ -24,5 +24,13 @@ module Graphlyte
     def to_s(indent=0)
       fields.map { |field| field.to_s(indent) }.join("\n")
     end
+
+    def to_a
+      [ to_s ]
+    end
+
+    def +(fieldset)
+      to_s + "\n" + fieldset.to_s
+    end
   end
 end

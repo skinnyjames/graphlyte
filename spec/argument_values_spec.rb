@@ -73,4 +73,19 @@ describe Graphlyte do
     }
     STRING
   end
+
+  it "should handle booleans" do 
+    query = Graphlyte.query do |q|
+      q.arguments(boolean: true) do |i|
+        i.id
+      end 
+    end
+    expect(query.to_s).to eql(<<~STRING)
+    {
+      arguments(boolean: true) {
+        id
+      }
+    }
+    STRING
+  end
 end
