@@ -134,7 +134,7 @@ module Graphlyte
     end
     
     def to_s
-      return @data && !@data.empty? ? "(#{@data.map{|k, v| "#{k}: #{v}"}.join(", ")})" : ""
+      return @data && !@data.empty? ? "(#{@data.map{|k, v| "#{k}: \"#{v}\""}.join(", ")})" : ""
     end
   end
 
