@@ -20,7 +20,7 @@ module Graphlyte
 
   def self.build(&block)
     builder = Builder.new
-    block.call(builder) if block
+    builder.>.instance_eval(&block)
     builder
   end
 end

@@ -13,8 +13,8 @@ in your Gemfile
 
 ```ruby
 # Basic query
-query = Graphlyte.query do |q|
-  q.all_todos do |q|
+query = Graphlyte.query do
+  q.all_todos do
     # specify fields for your query
     q.id
     q.status
@@ -48,18 +48,19 @@ RestClient.post("http://localhost", query.to_json, { "Content-Type" => "applicat
 ### Fragments / Nested Fragments
 
 ```ruby
-extra_fields = Graphlyte.fragment('extraFields', "Todo") do |f|
+extra_fields = Graphlyte.fragment('extraFields', "Todo") do
   f.id
   f.status
 end
 
+# pass a block parameter if you want to merge/spread fieldsets or fragments
 todo = Graphlyte.fragment('todoFields', "Todo") do |f|
   f.title
   f << extra_fields
 end
 
-query = Graphlyte.query do |q|
-  q.all_todos todo
+query = Graphlyte.query do
+  all_todos todo
 end
 
 puts query.to_s
@@ -85,12 +86,12 @@ fragment extraFields on Todo {
 ### input and aliases
 
 ```ruby
-query = Graphlyte.query do |q|
-  q.User(id: 123).alias("sean") do |u|
-    u.id
+query = Graphlyte.query do
+  User(id: 123).alias("sean") do
+    id
   end
-  q.User(id: 456).alias("bob") do |u|
-    u.id
+  User(id: 456).alias("bob") do
+    id
   end
 end
 

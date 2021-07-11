@@ -26,7 +26,7 @@ module Graphlyte
         field = Field.new(method, Fieldset.empty, fieldset_or_hargs)
       end
 
-      block.call(field.fieldset.builder) if block
+      field.fieldset.builder.>.instance_eval(&block) if block
       @fields << field
       field
     end
@@ -34,6 +34,10 @@ module Graphlyte
     # for internal use only
     def >>
       @fields
+    end
+
+    def >
+      self
     end
   end
 end
