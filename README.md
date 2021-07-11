@@ -14,7 +14,7 @@ in your Gemfile
 ```ruby
 # Basic query
 query = Graphlyte.query do |q|
-  q.allTodos do |q|
+  q.all_todos do |q|
     # specify fields for your query
     q.id
     q.status
@@ -59,7 +59,7 @@ todo = Graphlyte.fragment('todoFields', "Todo") do |f|
 end
 
 query = Graphlyte.query do |q|
-  q.allTodos todo
+  q.all_todos todo
 end
 
 puts query.to_s
