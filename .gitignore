@@ -1,3 +1,5 @@
 /fixture/node_modules/
 /fixture/package-lock.json
 Gemfile.lock
+test.rb
+*.gem
