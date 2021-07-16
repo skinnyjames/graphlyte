@@ -66,4 +66,20 @@ describe Graphlyte do
     response = JSON.parse(request(query.to_json))["data"]
     expect(response).to eql(expected)
   end
+
+  it "should support argument variables" do 
+    query = Graphlyte.query do 
+      User(id: :sean_id).alias("sean") { id }
+      User(id: :bob_id).alias("bob") { id }
+    end
+    expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
+    json = query.to_json(sean_id: 123, bob_id: 456)
+    puts json
+    begin
+      response = JSON.parse(request(json))["data"]
+    rescue RestClient::ExceptionWithResponse => e
+      puts e.response.body
+    end
+    expect(response).to eql(expected)
+  end
 end

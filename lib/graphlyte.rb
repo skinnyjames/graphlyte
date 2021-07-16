@@ -2,6 +2,7 @@ require 'json'
 require_relative "./graphlyte/fieldset"
 require_relative "./graphlyte/query"
 require_relative "./graphlyte/fragment"
+require_relative "./graphlyte/parser/new_parser"
 
 module Graphlyte
   def self.query(name = nil, &block)
@@ -14,6 +15,10 @@ module Graphlyte
 
   def self.fieldset(model_name=nil, &block)
     Fieldset.new(model_name, builder: build(&block))
+  end
+
+  def self.parse(input)
+    NewParser.parse(input)
   end
 
   private
