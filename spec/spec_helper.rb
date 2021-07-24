@@ -1,4 +1,5 @@
 require_relative "#{__dir__}/../lib/graphlyte"
+require_relative "#{__dir__}/../lib/graphlyte/parsing/lexer"
 require "rspec"
 
 
