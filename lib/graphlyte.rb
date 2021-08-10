@@ -2,8 +2,11 @@ require 'json'
 require_relative "./graphlyte/fieldset"
 require_relative "./graphlyte/query"
 require_relative "./graphlyte/fragment"
+require_relative "./graphlyte/schema"
 
 module Graphlyte
+  extend Schema
+
   def self.query(name = nil, &block)
     Query.new(name, builder: build(&block))
   end
