@@ -66,4 +66,11 @@ describe Graphlyte do
     response = JSON.parse(request(query.to_json))["data"]
     expect(response).to eql(expected)
   end
+
+  it "should query for the schema" do 
+    query = Graphlyte.schema_query.to_json
+    response = JSON.parse(request(query))['data']
+    pp response
+    expect(response).to be(nil)
+  end
 end
