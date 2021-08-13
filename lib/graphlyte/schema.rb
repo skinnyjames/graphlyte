@@ -1,82 +1,51 @@
+require_relative "parsing/parser"
+require_relative "schema/types/base"
+require_relative "schema/types/enum"
+require_relative "schema/types/input_object"
+require_relative "schema/types/interface"
+require_relative "schema/types/list"
+require_relative "schema/types/non_null"
+require_relative "schema/types/object"
+require_relative "schema/types/scalar"
+require_relative "schema/types/union"
 
-module Graphlyte
+module Graphlyte 
   module Schema
-    def schema_query
-      type_ref_fragment = Graphlyte.fragment('TypeRef', '__Type') do
-        kind
-        name
-        of_type { 
-          kind
-          name
-          of_type {
-            kind
-            name
-            of_type {
-              kind
-              name
-              of_type {
-                kind
-                name
-                of_type {
-                  kind
-                  name
-                  of_type {
-                    kind
-                    name
-                    of_type {
-                      kind
-                      name
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+
+    class Definition
+      def initialize(schema_payload)
+        @schema = JSON.parse(schema_payload.to_json, symbolize_names: true)[:__schema]
       end
 
-      input_value_fragment = Graphlyte.fragment('InputValues', '__InputValue') do
-        name
-        description
-        type type_ref_fragment
-        default_value
+      def query_type
+        @schema[:queryType][:name]
       end
 
-      full_type_fragment = Graphlyte.fragment('FullType', '__Type') do
-        kind
-        name
-        description
-        fields(includeDeprecated: true) do
-          name
-          description
-          args input_value_fragment
-          type type_ref_fragment
-          is_deprecated
-          deprecation_reason
-        end
-        input_fields input_value_fragment
-        interfaces type_ref_fragment
-        enum_values(includeDeprecated: true) do
-          name
-          description
-          is_deprecated
-          deprecation_reason
-        end
-        possible_types type_ref_fragment
+      def mutation_type 
+        @schema[:mutationType][:name]
       end
 
-      Graphlyte.query do
-        __schema do
-          query_type { name }
-          mutation_type { name }
-          subscription_type { name }
-          types full_type_fragment
-          directives do 
-            name 
-            description
-            args input_value_fragment
-          end
+      def validate(tokens)
+
+      end
+
+      def types
+        @schema[:types].map do |type|
         end
+      end
+    end
+
+    class Loader
+      attr_reader :definition
+
+      def initialize(schema_payload)
+        @definition = Definition.new schema_payload
+      end
+
+
+
+      def parse(gql)
+        Parsing::Parser.parse(gql, @definition)
       end
     end
   end

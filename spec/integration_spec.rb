@@ -1,4 +1,3 @@
-require "rest_client"
 require "json"
 describe Graphlyte do 
   it "should perform a basic query" do 
@@ -81,5 +80,11 @@ describe Graphlyte do
       puts e.response.body
     end
     expect(response).to eql(expected)
+  end
+
+  it "should query for the schema" do 
+    query = Graphlyte.schema_query.to_json
+    response = JSON.parse(request(query))['data']
+    expect(response).not_to be(nil)
   end
 end

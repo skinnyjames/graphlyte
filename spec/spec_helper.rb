@@ -1,7 +1,7 @@
 require_relative "#{__dir__}/../lib/graphlyte"
 require_relative "#{__dir__}/../lib/graphlyte/parsing/lexer"
 require "rspec"
-
+require "rest_client"
 
 module Request
   def request(json)

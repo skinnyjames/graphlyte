@@ -10,9 +10,9 @@ module Graphlyte
 
       attr_reader :tokens, :position, :state
 
-      def self.parse(str)
+      def self.parse(str, schema)
         tokens = Lexer.tokenize(str)
-        new(tokens).parse
+        new(tokens).parse(schema)
       end
 
       def initialize(tokens)
@@ -33,10 +33,11 @@ module Graphlyte
         @position += offset
       end
 
-      def parse
+      def parse(schema)
         advance(1)
         builder = Builder.new(parse_fields)
-        Fieldset.new(builder: builder)
+        schema.validate(builder)
+        fieldset = Fieldset.new(builder: builder)
       end
 
       def parse_fields
