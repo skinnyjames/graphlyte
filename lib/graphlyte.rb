@@ -19,6 +19,10 @@ module Graphlyte
     Fieldset.new(model_name, builder: build(&block))
   end
 
+  def self.parse(input)
+    NewParser.parse(input)
+  end
+
   private
 
   def self.build(&block)
