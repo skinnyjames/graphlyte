@@ -8,9 +8,7 @@ require_relative "./graphlyte/types"
 module Graphlyte
   extend SchemaQuery
   
-  def self.Types
-    Types.new
-  end
+  TYPES = Types.new
 
   def self.query(name = nil, &block)
     Query.new(name, builder: build(&block))
