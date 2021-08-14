@@ -3,8 +3,8 @@ require_relative "./fieldset"
 
 module Graphlyte
   class Builder
-    def initialize
-      @fields = []
+    def initialize(fields = [])
+      @fields = fields
     end
 
     def <<(buildable)

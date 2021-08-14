@@ -1,4 +1,3 @@
-require "rest_client"
 require "json"
 describe Graphlyte do 
   it "should perform a basic query" do 
@@ -65,5 +64,66 @@ describe Graphlyte do
     expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
     response = JSON.parse(request(query.to_json))["data"]
     expect(response).to eql(expected)
+  end
+
+  it "should support primitive variables" do 
+    query = Graphlyte.query do 
+      all_todos(per_page: :per_page, page: :pages) do
+        status
+        title 
+      end
+    end
+    json = query.to_json(per_page: 1, pages: 1)
+    expected = {"allTodos" => [{"status" => "open", "title" => "Sic Dolor amet"}]}
+    begin
+      response = JSON.parse(request(json))["data"]
+    rescue RestClient::ExceptionWithResponse => e
+      puts e.response.body
+    end
+    expect(response).to eql(expected)
+  end
+
+  it "should support scalar arguments" do
+    fragment = Graphlyte.fragment("userFields", "Query") do 
+      User(id: Graphlyte.Types.ID!(:sean_id)) do
+        name         
+      end
+    end
+    
+    query = Graphlyte.query do |f|
+      all_todos(filter: Graphlyte.Types.TodoFilter(:todo_filter)) do
+        status
+        title
+      end
+      f << fragment
+    end
+
+    json = query.to_json(todo_filter: {ids: [2]}, sean_id: 123)
+    begin
+      response = JSON.parse(request(json))["data"]
+    rescue RestClient::ExceptionWithResponse => e
+      puts e.response.body
+    end
+  end
+
+  it "should support argument variables" do 
+    query = Graphlyte.query do 
+      User(id: Graphlyte.Types.ID!(:sean_id)).alias("sean") { id }
+      User(id: Graphlyte.Types.ID!(:bob_id)).alias("bob") { id }
+    end
+    expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
+    json = query.to_json(sean_id: 123, bob_id: 456)
+    begin
+      response = JSON.parse(request(json))["data"]
+    rescue RestClient::ExceptionWithResponse => e
+      puts e.response.body
+    end
+    expect(response).to eql(expected)
+  end
+
+  it "should query for the schema" do 
+    query = Graphlyte.schema_query.to_json
+    response = JSON.parse(request(query))['data']
+    expect(response).not_to be(nil)
   end
 end

@@ -108,6 +108,78 @@ returns
   }
 }
 ```
+# variables
+```ruby
+query = Graphlyte.query do 
+  all_todos(per_page: :per_page, page: :pages) do
+    status
+    title 
+  end
+end
+
+query.to_json(per_page: 1, pages: 1)
+```
+returns 
+
+```
+{
+  "query": "query anonymousQuery($perPage: Int, $pages: Int) {
+              allTodos(perPage: $perPage, page: $pages) {
+                status     
+                title    
+              }
+            },
+  "variables":{"perPage":1,"pages":1}
+}
+```
+
+## complex types
+
+Graphlyte will try to infer the types of primitive values, but if the value is an ID, or other non-primitive, you can use `Graphlyte.Types`
+
+```ruby
+
+fragment = Graphlyte.fragment("userFields", "Query") do 
+  User(id: Graphlyte.Types.ID!(:sean_id)) do
+    name         
+  end
+end
+
+query = Graphlyte.query do |f|
+  all_todos(filter: Graphlyte.Types.TodoFilter(:todo_filter)) do
+    status
+    title
+  end
+  f << fragment
+end
+
+query.to_json(todo_filter: { ids: [1]}, sean_id: 123)
+```
+returns 
+```json
+{
+  "query":"query anonymousQuery($todoFilter: TodoFilter, $seanId: ID!) {
+                    allTodos(filter: $todoFilter) {
+                      status
+                      title
+                    }
+                   ...userFields 
+                   }
+                   
+                   fragment userFields on Query {
+                      User(id: $seanId) {
+                        name
+                      }
+                    }",
+  "variables":{"todoFilter":{"ids":[1]},"seanId":123}
+}
+```
+
+## getting placeholders for a query
+
+you can call `query.placeholders` on a query to get back all of the expected variables.  This is useful when you don't know all of the variables that a query expects.
+
+
 # purpose
 This library aims to be a client agnostic implementation for building graphql queries.
 
