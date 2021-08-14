@@ -135,18 +135,18 @@ returns
 
 ## complex types
 
-Graphlyte will try to infer the types of primitive values, but if the value is an ID, or other non-primitive, you can use `Graphlyte.Types`
+Graphlyte will try to infer the types of primitive values, but if the value is an ID, or other non-primitive, you can use `Graphlyte::TYPES`
 
 ```ruby
 
 fragment = Graphlyte.fragment("userFields", "Query") do 
-  User(id: Graphlyte.Types.ID!(:sean_id)) do
+  User(id: Graphlyte::TYPES.ID!(:sean_id)) do
     name         
   end
 end
 
 query = Graphlyte.query do |f|
-  all_todos(filter: Graphlyte.Types.TodoFilter(:todo_filter)) do
+  all_todos(filter: Graphlyte::TYPES.TodoFilter(:todo_filter)) do
     status
     title
   end

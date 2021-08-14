@@ -74,6 +74,7 @@ describe Graphlyte do
       end
     end
     json = query.to_json(per_page: 1, pages: 1)
+    puts json
     expected = {"allTodos" => [{"status" => "open", "title" => "Sic Dolor amet"}]}
     begin
       response = JSON.parse(request(json))["data"]
@@ -85,13 +86,13 @@ describe Graphlyte do
 
   it "should support scalar arguments" do
     fragment = Graphlyte.fragment("userFields", "Query") do 
-      User(id: Graphlyte.Types.ID!(:sean_id)) do
+      User(id: Graphlyte::TYPES.ID!(:sean_id)) do
         name         
       end
     end
     
     query = Graphlyte.query do |f|
-      all_todos(filter: Graphlyte.Types.TodoFilter(:todo_filter)) do
+      all_todos(filter: Graphlyte::TYPES.TodoFilter(:todo_filter)) do
         status
         title
       end
@@ -108,8 +109,8 @@ describe Graphlyte do
 
   it "should support argument variables" do 
     query = Graphlyte.query do 
-      User(id: Graphlyte.Types.ID!(:sean_id)).alias("sean") { id }
-      User(id: Graphlyte.Types.ID!(:bob_id)).alias("bob") { id }
+      User(id: Graphlyte::TYPES.ID!(:sean_id)).alias("sean") { id }
+      User(id: Graphlyte::TYPES.ID!(:bob_id)).alias("bob") { id }
     end
     expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
     json = query.to_json(sean_id: 123, bob_id: 456)
