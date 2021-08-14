@@ -74,7 +74,6 @@ describe Graphlyte do
       end
     end
     json = query.to_json(per_page: 1, pages: 1)
-    puts json
     expected = {"allTodos" => [{"status" => "open", "title" => "Sic Dolor amet"}]}
     begin
       response = JSON.parse(request(json))["data"]
