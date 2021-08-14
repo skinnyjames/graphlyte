@@ -14,10 +14,6 @@ module Graphlyte
     Types.new
   end
 
-  def self.schema(payload)
-    Schema::Loader.new(payload)
-  end
-
   def self.query(name = nil, &block)
     Query.new(name, builder: build(&block))
   end
@@ -29,11 +25,7 @@ module Graphlyte
   def self.fieldset(model_name=nil, &block)
     Fieldset.new(model_name, builder: build(&block))
   end
-
-  def self.parse(input)
-    NewParser.parse(input)
-  end
-
+  
   private
 
   def self.build(&block)
