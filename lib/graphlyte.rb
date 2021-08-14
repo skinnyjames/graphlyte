@@ -3,8 +3,6 @@ require_relative "./graphlyte/fieldset"
 require_relative "./graphlyte/query"
 require_relative "./graphlyte/fragment"
 require_relative "./graphlyte/schema_query"
-require_relative "./graphlyte/schema"
-
 require_relative "./graphlyte/types"
 
 module Graphlyte
@@ -25,7 +23,7 @@ module Graphlyte
   def self.fieldset(model_name=nil, &block)
     Fieldset.new(model_name, builder: build(&block))
   end
-  
+
   private
 
   def self.build(&block)
