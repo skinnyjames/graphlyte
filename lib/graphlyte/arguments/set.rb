@@ -13,10 +13,12 @@ module Graphlyte
       end
 
       def extract_variables(values=@values, variables=[])
-        values.each do |key, value|
+        values&.each do |key, value|
           if value.is_a?(Set)
             variables.concat extract_variables(value.values)
           elsif value.symbol?
+            variables << value
+          elsif value.formal?
             variables << value
           end
         end
