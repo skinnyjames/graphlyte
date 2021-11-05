@@ -2,10 +2,11 @@ require_relative "./refinements/string_refinement"
 module Graphlyte
   class Query < Fieldset
     using Refinements::StringRefinement
-    attr_reader :name
+    attr_reader :name, :type
 
-    def initialize(query_name=nil, **hargs)
+    def initialize(query_name=nil, type=:query, **hargs)
       @name = query_name
+      @type = type
       super(**hargs)
     end
 
@@ -19,7 +20,7 @@ module Graphlyte
       variables = flatten_variables(builder.>>).uniq { |v| v.value }
       types = merge_variable_types(variables, hargs)
 
-      str = "query #{name}"
+      str = "#{type} #{name}"
       unless types.empty?
         type_new = types.map do |type_arr|
           "$#{type_arr[0].to_camel_case}: #{type_arr[1]}"

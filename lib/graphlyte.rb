@@ -11,7 +11,11 @@ module Graphlyte
   TYPES = Types.new
 
   def self.query(name = nil, &block)
-    Query.new(name, builder: build(&block))
+    Query.new(name, :query, builder: build(&block))
+  end
+
+  def self.mutation(name = nil, &block)
+    Query.new(name, :mutation, builder: build(&block))
   end
 
   def self.fragment(fragment_name, model_name, &block)

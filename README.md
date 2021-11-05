@@ -183,6 +183,10 @@ returns
 you can call `query.placeholders` on a query to get back all of the expected variables.  This is useful when you don't know all of the variables that a query expects.
 
 
+### mutations
+
+you can call Graphlyte::mutation like you would Graphlyte::query. 
+
 # purpose
 This library aims to be a client agnostic implementation for building graphql queries.
 
@@ -191,7 +195,6 @@ By using Fragments and fieldsets, one can export structure resuable components f
 # todo
 * more documentation
 * refactor
-* support mutations
 * support schema validation
 
 # running tests
