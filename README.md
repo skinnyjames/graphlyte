@@ -2,6 +2,8 @@
 
 [![Build Status](http://drone.skinnyjames.net/api/badges/seanchristophergregory/graphlyte/status.svg?ref=refs/heads/main)](http://drone.skinnyjames.net/seanchristophergregory/graphlyte)
 
+[api docs](https://seanchristophergregory.gitlab.io/graphlyte/)
+
 Craft composable graphql queries using ruby
 
 ## installation
