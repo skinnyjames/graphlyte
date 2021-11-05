@@ -6,8 +6,8 @@ services:
 - name: server
   image: node:latest
   commands: 
-    - npm i -g json-graphql-server
-    - json-graphql-server fixture/mocks.json
+    - npm i -g json-graphql-server@2.2.3
+    - json-graphql-server fixture/mocks.json --p 5000
   detach: true
   environment: 
     NODE_HOST: 0.0.0.0
