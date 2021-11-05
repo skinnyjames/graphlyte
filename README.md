@@ -1,5 +1,6 @@
 # graphlyte
-[![Build Status](http://drone.skinnyjames.net/api/badges/skinnyjames/graphlyte/status.svg)](http://drone.skinnyjames.net/skinnyjames/graphlyte)
+
+[![Build Status](http://drone.skinnyjames.net/api/badges/seanchristophergregory/graphlyte/status.svg?ref=refs/heads/main)](http://drone.skinnyjames.net/seanchristophergregory/graphlyte)
 
 Craft composable graphql queries using ruby
 
