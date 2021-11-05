@@ -16,7 +16,7 @@ module Graphlyte
     end
 
     def to_json(name="anonymousQuery", **hargs)
-      variables = flatten_variables(builder.>>)
+      variables = flatten_variables(builder.>>).uniq { |v| v.value }
       types = merge_variable_types(variables, hargs)
 
       str = "query #{name}"
