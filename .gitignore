@@ -3,3 +3,5 @@
 Gemfile.lock
 test.rb
 *.gem
+/public/
+.yardoc/

@@ -1,0 +1,14 @@
+image: "ruby:latest"
+
+before_script:
+  - gem install yard
+
+pages:
+  stage: deploy
+  script:
+  - yard doc
+  artifacts:
+    paths:
+    - public
+  only:
+  - main
