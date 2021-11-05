@@ -5,7 +5,7 @@ require "rest_client"
 module Request
   def request(json)
     host = ENV["HOST"] || "localhost"
-    RestClient.post("http://#{host}:5000", json, { 'Content-Type' => "application/json" })
+    RestClient.post("http://#{host}:5000", json, { 'Content-Type' => "application/json", 'Accept' => 'application/json' })
   end
 end
 
