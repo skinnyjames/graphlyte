@@ -8,8 +8,14 @@ require_relative "../types"
 module Graphlyte
   module Schema
     class Parser
+      attr_reader :tokens
+
       def self.parse(gql)
-        Lexer.new(gql).parse
+        new(Lexer.new(gql).tokenize).tokens
+      end
+
+      def initialize(tokens)
+        @tokens = tokens
       end
     end
 
@@ -22,7 +28,7 @@ module Graphlyte
         @tokens = []
       end
 
-      def parse
+      def tokenize
         until scanner.eos?
           case state
           when :default
@@ -43,7 +49,7 @@ module Graphlyte
               @tokens << [:END_FRAGMENT]
               pop_state
             elsif scanner.scan /^\s*\{\s*$/
-              # do nothing
+              push_state :field
             else
               handle_field
             end
@@ -59,12 +65,15 @@ module Graphlyte
             end
           when :field
             if scanner.scan /\s*\}\s*/
-              puts @stack.inspect
               @tokens << [:END_FIELD]
               pop_state
             else
               handle_field
             end
+          when :hash_arguments
+            handle_hash_arguments
+          when :array_arguments
+            handle_array_arguments
           when :arguments
             if scanner.scan /\s*\)\s*/
               @tokens << [:END_ARGS]
@@ -78,9 +87,14 @@ module Graphlyte
               handle_shared_arguments
             end
           when :argument_defaults
-            handle_shared_arguments
-            @tokens << [:END_DEFAULT_VALUE]
-            pop_state
+            if @stack.reverse.take(2).eql?([:argument_defaults, :argument_defaults])
+              @tokens << [:END_DEFAULT_VALUE]
+              pop_state
+              pop_state
+            else
+              push_state :argument_defaults
+              handle_shared_arguments
+            end
           end
         end
         @tokens
@@ -110,14 +124,12 @@ module Graphlyte
           @tokens << [:ARG_KEY, scanner[1]]
         elsif scanner.scan(/(\!\w+)/)
           @tokens << [:SPECIAL_ARG_KEY_VAL, scanner[1]]
-        elsif scanner.scan /^{\s*?/
+        elsif scanner.scan /^\s*\{\s*?/
           @tokens << [:ARG_HASH_START]
-        elsif scanner.scan /\s*?\}\s*?/
-          @tokens << [:ARG_HASH_END]
-        elsif scanner.scan /\s*?\[\s*?/
+          push_state :hash_arguments
+        elsif scanner.scan /\s*\[\s*/
           @tokens << [:ARG_ARRAY_START]
-        elsif scanner.scan /^\]/
-          @tokens << [:ARG_ARRAY_END]
+          push_state :array_arguments
         elsif scanner.scan /\s?\"(\w+)\"/
           @tokens << [:ARG_STRING_VALUE, scanner[1]]
         elsif scanner.scan /\s?(\d+)/
@@ -131,6 +143,24 @@ module Graphlyte
           @tokens << [:SPECIAL_ARG_REF, scanner[1]]
         else
           advance
+        end
+      end
+
+      def handle_hash_arguments
+        if scanner.scan /\}/
+          @tokens << [:ARG_HASH_END]
+          pop_state
+        else
+          handle_shared_arguments
+        end
+      end
+
+      def handle_array_arguments
+        if scanner.scan /\s*\]\s*/
+          @tokens << [:ARG_ARRAY_END]   
+          pop_state   
+        else
+          handle_shared_arguments
         end
       end
 
