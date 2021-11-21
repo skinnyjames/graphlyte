@@ -2,9 +2,11 @@ FROM ruby:latest
 
 WORKDIR /test
 
-ADD lib/* lib/
+ADD fixture fixture
+ADD lib lib
 ADD /spec/* spec/
 ADD Gemfile .
+ADD graphlyte.gemspec .
 ADD .rspec .
 
 RUN gem install bundler

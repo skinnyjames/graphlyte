@@ -51,6 +51,36 @@ describe Graphlyte do
     expect(response["allTodos"]).to eql(expected) 
   end
 
+  it "should support parsing fragments" do
+    query = Graphlyte.parse(<<~GQL)
+      query todos {
+        allTodos {
+          ...todoFields
+         }
+      }
+  
+      fragment extraFields on Todo {
+        id
+        status
+      }
+
+      fragment todoFields on Todo {
+        title
+        ...extraFields
+      }
+    GQL
+
+    expected = @fixture["todo"].map do |t|
+      {
+        "title" => t["title"],
+        "id" => t["id"].to_s,
+        "status" => t["status"]
+      }
+    end
+    response = JSON.parse(request(query.to_json))["data"]
+    expect(response["allTodos"]).to eql(expected)
+  end
+
   it "should support aliases and input" do 
     query = Graphlyte.query do
       User(id: 123).alias("sean") do
@@ -61,6 +91,22 @@ describe Graphlyte do
       end
     end
 
+    expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
+    response = JSON.parse(request(query.to_json))["data"]
+    expect(response).to eql(expected)
+  end
+
+  it "should parse aliases and input" do
+    query = Graphlyte.parse(<<~GQL)
+      query users {
+        sean: User(id: 123) {
+          id  
+        }
+        bob: User(id: 456) {
+          id
+        }
+      }
+    GQL
     expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
     response = JSON.parse(request(query.to_json))["data"]
     expect(response).to eql(expected)
@@ -99,8 +145,36 @@ describe Graphlyte do
     end
 
     json = query.to_json(todo_filter: {ids: [2]}, sean_id: 123)
+    expected = {"allTodos"=>[{"status"=>"open", "title"=>"Sic Dolor amet"}], "User"=>{"name"=>"John Doe"}}
     begin
       response = JSON.parse(request(json))["data"]
+      expect(response).to eql(expected)
+    rescue RestClient::ExceptionWithResponse => e
+      puts e.response.body
+    end
+  end
+
+  it "should support parsing scalars" do
+    query = parse(<<~GQL)
+      query todos($todoFilter: TodoFilter) {
+        allTodos(filter: $todoFilter) {
+          status
+          title
+        }
+        ...userFields
+      }
+      fragment userFields on Query($seanId: ID!) {
+        User(id: $seanId) {
+          name
+        }
+      }
+    GQL
+
+    json = query.to_json(todo_filter: {ids: [2]}, sean_id: 123)
+    expected = {"allTodos"=>[{"status"=>"open", "title"=>"Sic Dolor amet"}], "User"=>{"name"=>"John Doe"}}
+    begin
+      response = JSON.parse(request(json))["data"]
+      expect(response).to eql(expected)
     rescue RestClient::ExceptionWithResponse => e
       puts e.response.body
     end
@@ -115,6 +189,7 @@ describe Graphlyte do
     json = query.to_json(sean_id: 123, bob_id: 456)
     begin
       response = JSON.parse(request(json))["data"]
+      expect(response).to eql(expected)
     rescue RestClient::ExceptionWithResponse => e
       puts e.response.body
     end

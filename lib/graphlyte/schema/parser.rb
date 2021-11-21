@@ -205,6 +205,7 @@ module Graphlyte
 
       def parse_fragment
         if token = expect(:START_FRAGMENT)
+          parse_args
           builder = Builder.new parse_fields
           fragment = Fragment.new(token[0][1], token[0][2], builder: builder)
           @fragments_dictionary[token[0][1]] = fragment
@@ -300,12 +301,12 @@ module Graphlyte
               @tokens << [:END_FRAGMENT]
               pop_state
               pop_context
-            elsif scanner.check /^\s*\{\s*$/
+            elsif scanner.check /^\s*\{\s*/
               if get_context == :field
                 push_state :field
                 push_context :field
               else
-                scanner.scan /^\s*\{\s*$/
+                scanner.scan /^\s*\{\s*/
                 push_context :field
               end
             else
@@ -327,16 +328,16 @@ module Graphlyte
               handle_field
             end
           when :query
-            if scanner.scan /\}/
+            if scanner.scan /\s*\}\s*/
               @tokens << [:END_QUERY]
               pop_state
               pop_context
-            elsif scanner.check /^\s*\{\s*$/
+            elsif scanner.check /^\s*\{\s*/
               if get_context == :field
                 push_state :field
                 push_context :field
               else
-                scanner.scan /^\s*\{\s*$/
+                scanner.scan /^\s*\{\s*/
                 push_context :field
               end
             else
@@ -397,7 +398,8 @@ module Graphlyte
           scanner.scan /\.{3}(\w+)/
           @tokens << [:FRAGMENT_REF, scanner[1]]
           pop_context
-          pop_state if scanner.check /\s*\}\s*\}/
+          # we need to pop state if we are nested in a field, and not in the query context
+          pop_state if get_context == :field
         elsif scanner.scan /\.{3}(\w+)/
           @tokens << [:FRAGMENT_REF, scanner[1]]
         elsif scanner.scan /\s*(\w+):\s*/
@@ -406,7 +408,8 @@ module Graphlyte
           scanner.scan /\s*(\w+)\s*/
           @tokens << [:FIELD_NAME, scanner[1]]
           pop_context
-          pop_state if scanner.check /\s*\}\s*\}/
+          # we need to pop state if we are nested in a field, and not in the query context
+          pop_state if get_context == :field
         elsif scanner.scan /\s*(\w+)\s*/
           @tokens << [:FIELD_NAME, scanner[1]]
         elsif scanner.scan /^\s*\(/
