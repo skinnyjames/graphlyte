@@ -56,13 +56,26 @@ module Graphlyte
           hash = {}
           hash[key] = value
           hash
+        elsif (token = expect(:SPECIAL_ARG_KEY)) && (value = parse_value)
+          @special_args ||= {}
+          @special_args[token[0][1]] = value
+          @special_args
         end
       end
 
       def parse_value
         if token = expect(:ARG_NUM_VALUE) || expect(:ARG_STRING_VALUE) || expect(:ARG_BOOL_VALUE)
           token[0][1]
-        elsif expect(:ARG_HASH_START)
+        elsif token = expect(:SPECIAL_ARG_REF)
+          ref = token[0][1]
+          raise "Can't find ref $#{ref}" unless @special_args[ref]
+          value = @special_args[ref]
+          hash = {}
+          hash[ref] = Graphlyte::TYPES.send(value, ref.to_sym)
+          hash
+        elsif token = expect(:SPECIAL_ARG_VAL)
+          token[0][1]
+        elsif token = expect(:ARG_HASH_START)
           parse_arg_hash
         elsif expect(:ARG_ARRAY_START)
           parse_arg_array
@@ -197,7 +210,6 @@ module Graphlyte
         @fragment_tokens = sort_fragments([], take_fragments)
         @fragments_dictionary = {}
         @fragments_dictionary = @fragment_tokens.any? ? FragmentParser.new(@fragment_tokens).parse_fragments : {}
-        puts @fragments_dictionary
         @position = 0
       end
 
@@ -212,6 +224,7 @@ module Graphlyte
       end
 
       def parse_query(name)
+        parse_args
         builder = Builder.new parse_fields
         query = Query.new(name, :query, builder: builder)
         need(:END_QUERY)

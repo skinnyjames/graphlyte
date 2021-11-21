@@ -13,7 +13,11 @@ module Graphlyte
 
     def placeholders
       flatten_variables(builder.>>).map do |value|
-        ":#{value.value.placeholder} of #{value.value.name}"
+        unless value.formal?
+          "#{value.value.to_sym.inspect} of unknown"
+        else
+          ":#{value.value.placeholder} of #{value.value.name}"
+        end
       end.join("\n")
     end
 
