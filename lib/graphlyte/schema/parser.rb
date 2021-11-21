@@ -70,9 +70,7 @@ module Graphlyte
           ref = token[0][1]
           raise "Can't find ref $#{ref}" unless @special_args[ref]
           value = @special_args[ref]
-          hash = {}
-          hash[ref] = Graphlyte::TYPES.send(value, ref.to_sym)
-          hash
+          Graphlyte::TYPES.send(value, ref.to_sym)
         elsif token = expect(:SPECIAL_ARG_VAL)
           token[0][1]
         elsif token = expect(:ARG_HASH_START)
