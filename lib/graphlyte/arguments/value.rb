@@ -4,11 +4,17 @@ module Graphlyte
     class Value
       using Refinements::StringRefinement
 
-      attr_reader :value
+      attr_reader :value, :default
 
-      def initialize(value)
+      def initialize(value, default = nil)
         raise ArgumentError, "Hash not allowed in this context" if value.is_a? Hash
-        @value = value
+        if value.is_a?(Value)
+          @value = value.value
+          @default = value.default
+        else
+          @value = value
+          @default = default
+        end
       end
 
       def symbol?

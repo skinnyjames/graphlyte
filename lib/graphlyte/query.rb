@@ -1,26 +1,36 @@
 require_relative "./refinements/string_refinement"
+require "json"
 module Graphlyte
   class Query < Fieldset
     using Refinements::StringRefinement
     attr_reader :name, :type
 
     def initialize(query_name=nil, type=:query, **hargs)
-      @name = query_name
+      @name = query_name || "anonymousQuery"
       @type = type
       super(**hargs)
     end
 
     def placeholders
       flatten_variables(builder.>>).map do |value|
-        ":#{value.value.placeholder} of #{value.value.name}"
+        unless value.formal?
+          str = ":#{value.value.to_sym.inspect} of unknown"
+        else
+          str = ":#{value.value.placeholder} of #{value.value.name}"
+        end
+
+        if value.default
+          str += " with default #{value.default.to_s}"
+        end
+        str
       end.join("\n")
     end
 
-    def to_json(name="anonymousQuery", **hargs)
+    def to_json(query_name=name, **hargs)
       variables = flatten_variables(builder.>>).uniq { |v| v.value }
       types = merge_variable_types(variables, hargs)
 
-      str = "#{type} #{name}"
+      str = "#{type} #{query_name}"
       unless types.empty?
         type_new = types.map do |type_arr|
           "$#{type_arr[0].to_camel_case}: #{type_arr[1]}"

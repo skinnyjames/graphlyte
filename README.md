@@ -187,6 +187,11 @@ you can call `query.placeholders` on a query to get back all of the expected var
 
 you can call Graphlyte::mutation like you would Graphlyte::query. 
 
+# parsing
+
+there is rudimentary support for parsing
+see `spec/parser_spec.rb` for more details
+
 # purpose
 This library aims to be a client agnostic implementation for building graphql queries.
 
