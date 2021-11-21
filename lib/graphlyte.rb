@@ -4,11 +4,16 @@ require_relative "./graphlyte/query"
 require_relative "./graphlyte/fragment"
 require_relative "./graphlyte/schema_query"
 require_relative "./graphlyte/types"
+require_relative "./graphlyte/schema/parser"
 
 module Graphlyte
   extend SchemaQuery
   
   TYPES = Types.new
+
+  def self.parse(gql)
+    Graphlyte::Schema::Parser.parse(gql)
+  end
 
   def self.query(name = nil, &block)
     Query.new(name, :query, builder: build(&block))

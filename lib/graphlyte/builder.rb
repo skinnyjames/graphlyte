@@ -17,7 +17,7 @@ module Graphlyte
     end
     
     def method_missing(method, fieldset_or_hargs=nil, hargs={}, &block)
-      # todo: camel case method 
+      # todo: camel case method
 
       # hack for ruby bug in lower versions
       if [Fieldset, Fragment].include?(fieldset_or_hargs.class)
@@ -29,6 +29,10 @@ module Graphlyte
       field.fieldset.builder.>.instance_eval(&block) if block
       @fields << field
       field
+    end
+
+    def respond_to_missing
+      true
     end
 
     # for internal use only

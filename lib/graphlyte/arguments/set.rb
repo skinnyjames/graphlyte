@@ -16,6 +16,7 @@ module Graphlyte
         values&.each do |key, value|
           if value.is_a?(Set)
             variables.concat extract_variables(value.values)
+          elsif value.is_a?(Array)
           elsif value.symbol?
             variables << value
           elsif value.formal?
