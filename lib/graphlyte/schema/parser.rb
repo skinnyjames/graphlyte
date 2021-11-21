@@ -235,7 +235,7 @@ module Graphlyte
         if token = expect(:START_QUERY)
           parse_query(token[0][1])
         elsif token = expect(:START_MUTATION)
-          parse_mutation(token[1])
+          parse_mutation(token[0][1])
         else
           raise "INVALID"
         end

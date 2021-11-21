@@ -13,6 +13,20 @@ describe Graphlyte::Schema::Parser, :parser do
     STR
   end
 
+  it "should parse a simple mutation" do
+    mutation = parse(<<~GQL)
+      mutation hello {
+        world  
+      }
+    GQL
+    expect(mutation.class).to be(Graphlyte::Query)
+    expect(mutation.to_s).to eql(<<~STR)
+      {
+        world
+      }
+    STR
+  end
+
   it "should parse nested queries" do
     query = parse(<<~GQL)
       query hello {
