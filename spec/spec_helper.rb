@@ -11,6 +11,10 @@ module Request
   def tokenize(gql)
     Graphlyte::Schema::Lexer.new(gql).tokenize
   end
+
+  def parse(gql)
+    Graphlyte.parse(gql)
+  end
 end
 
 RSpec.configure do |config|

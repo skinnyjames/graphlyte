@@ -14,10 +14,15 @@ module Graphlyte
     def placeholders
       flatten_variables(builder.>>).map do |value|
         unless value.formal?
-          "#{value.value.to_sym.inspect} of unknown"
+          str = ":#{value.value.to_sym.inspect} of unknown"
         else
-          ":#{value.value.placeholder} of #{value.value.name}"
+          str = ":#{value.value.placeholder} of #{value.value.name}"
         end
+
+        if value.default
+          str += " with default #{value.default.to_s}"
+        end
+        str
       end.join("\n")
     end
 

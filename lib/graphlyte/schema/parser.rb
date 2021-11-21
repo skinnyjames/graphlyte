@@ -50,27 +50,47 @@ module Graphlyte
         end
       end
 
+      def parse_default
+        if expect(:START_DEFAULT_VALUE)
+          value = parse_value
+          need(:END_DEFAULT_VALUE)
+          value
+        end
+      end
+
       def parse_arg
         if (token = expect(:ARG_KEY)) && (value = parse_value)
+          defaults = parse_default
           key = token[0][1]
           hash = {}
-          hash[key] = value
+          if [Array, Hash].include?(value.class)
+            hash[key] = value
+          else
+            hash[key] = Graphlyte::Arguments::Value.new(value, defaults)
+          end
           hash
         elsif (token = expect(:SPECIAL_ARG_KEY)) && (value = parse_value)
+          defaults = parse_default
           @special_args ||= {}
-          @special_args[token[0][1]] = value
-          @special_args
+          arg = {}
+          if [Array, Hash].include?(value.class)
+            arg[token[0][1]] = value
+          else
+            arg[token[0][1]] = Graphlyte::Arguments::Value.new(value, defaults)
+          end
+          @special_args.merge!(arg)
+          arg
         end
       end
 
       def parse_value
-        if token = expect(:ARG_NUM_VALUE) || expect(:ARG_STRING_VALUE) || expect(:ARG_BOOL_VALUE)
+        if token = expect(:ARG_NUM_VALUE) || expect(:ARG_STRING_VALUE) || expect(:ARG_BOOL_VALUE) || expect(:ARG_FLOAT_VALUE)
           token[0][1]
         elsif token = expect(:SPECIAL_ARG_REF)
           ref = token[0][1]
           raise "Can't find ref $#{ref}" unless @special_args[ref]
           value = @special_args[ref]
-          Graphlyte::TYPES.send(value, ref.to_sym)
+          Arguments::Value.new(Graphlyte::TYPES.send(value.value, ref.to_sym), value.default)
         elsif token = expect(:SPECIAL_ARG_VAL)
           token[0][1]
         elsif token = expect(:ARG_HASH_START)
@@ -408,6 +428,8 @@ module Graphlyte
           push_state :array_arguments
         elsif scanner.scan /\s?\"([\w\s]+)\"/
           @tokens << [:ARG_STRING_VALUE, scanner[1]]
+        elsif scanner.scan /\s?(\d+\.\d+)/
+          @tokens << [:ARG_FLOAT_VALUE, scanner[1].to_f]
         elsif scanner.scan /\s?(\d+)/
           @tokens << [:ARG_NUM_VALUE, scanner[1].to_i]
         elsif scanner.scan /\s?(true|false)\s?/

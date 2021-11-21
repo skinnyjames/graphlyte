@@ -61,12 +61,20 @@ module Graphlyte
         data.inject({}) do |memo, (k, v)|
           if v.is_a?(Array)
             memo[k] = v.map do |item|
-              Value.new(item)
+              if item.is_a?(Value)
+                item
+              else
+                Value.new(item)
+              end
             end
           elsif v.is_a?(Hash)
             memo[k] = Set.new(v)
           else
-            memo[k] = Value.new(v)
+            if v.is_a?(Value)
+              memo[k] = v
+            else
+              memo[k] = Value.new(v)
+            end
           end
           memo
         end
