@@ -4,8 +4,8 @@ WORKDIR /app
 
 ADD mocks.json .
 
+RUN npm i -g json-graphql-server@2.2.3
+
 EXPOSE 5000
 
-RUN npm i -g json-graphql-server
-
-CMD json-graphql-server mocks.json
+CMD ["json-graphql-server", "mocks.json", "--p", "5000"]
