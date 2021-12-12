@@ -42,7 +42,15 @@ module Graphlyte
       
       def to_s(inner = false)
         return "" unless values && !values.empty?
-        arr = values.map do |k,v| 
+        arr = stringify_arguments
+        return arr.join(", ") if inner
+        "(#{arr.join(", ")})"
+      end
+
+      private 
+
+      def stringify_arguments
+        values.map do |k,v|
           if v.is_a?(Array)
             "#{k.to_s.to_camel_case}: [#{v.map(&:to_s).join(", ")}]"
           elsif v.is_a?(Set)
@@ -51,11 +59,7 @@ module Graphlyte
             "#{k.to_s.to_camel_case}: #{v.to_s}"
           end
         end
-        return arr.join(", ") if inner
-        "(#{arr.join(", ")})"
       end
-
-      private 
 
       def expand_arguments(data)
         data.inject({}) do |memo, (k, v)|

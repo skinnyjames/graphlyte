@@ -19,8 +19,9 @@ module Graphlyte
           str = ":#{value.value.placeholder} of #{value.value.name}"
         end
 
-        if value.default
-          str += " with default #{value.default.to_s}"
+        if value.value.default
+          str += " with default "
+          value.value.default.merge!(str)
         end
         str
       end.join("\n")
@@ -33,7 +34,12 @@ module Graphlyte
       str = "#{type} #{query_name}"
       unless types.empty?
         type_new = types.map do |type_arr|
-          "$#{type_arr[0].to_camel_case}: #{type_arr[1]}"
+          type_str = "$#{type_arr[0].to_camel_case}: #{type_arr[1]}"
+          unless type_arr[2].nil?
+            type_str << " = "
+            type_arr[2].merge!(type_str)
+          end
+          type_str
         end
         str += "(#{type_new.join(", ")})"
       end
@@ -59,7 +65,7 @@ module Graphlyte
             memo <<  "[#{merge_variable_types(var.value, hargs).first}]"
           end
         else
-          memo << [var.value.placeholder, var.value.name]
+          memo << [var.value.placeholder, var.value.name, var.value.default]
         end
         memo
       end
