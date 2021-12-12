@@ -63,11 +63,7 @@ module Graphlyte
           defaults = parse_default
           key = token[0][1]
           hash = {}
-          if [Array, Hash].include?(value.class)
-            hash[key] = value
-          else
-            hash[key] = Graphlyte::Arguments::Value.new(value, defaults)
-          end
+          hash[key] = value
           hash
         elsif (token = expect(:SPECIAL_ARG_KEY)) && (value = parse_value)
           defaults = parse_default
@@ -76,7 +72,8 @@ module Graphlyte
           if [Array, Hash].include?(value.class)
             arg[token[0][1]] = value
           else
-            arg[token[0][1]] = Graphlyte::Arguments::Value.new(value, defaults)
+            new_val = Schema::Types::Base.new(value, token[0][1], defaults)
+            arg[token[0][1]] = new_val
           end
           @special_args.merge!(arg)
           arg
@@ -89,8 +86,7 @@ module Graphlyte
         elsif token = expect(:SPECIAL_ARG_REF)
           ref = token[0][1]
           raise "Can't find ref $#{ref}" unless @special_args[ref]
-          value = @special_args[ref]
-          Arguments::Value.new(Graphlyte::TYPES.send(value.value, ref.to_sym), value.default)
+          @special_args[ref]
         elsif token = expect(:SPECIAL_ARG_VAL)
           token[0][1]
         elsif token = expect(:ARG_HASH_START)
@@ -108,10 +104,15 @@ module Graphlyte
 
       def parse_arg_hash
         if (key = expect(:ARG_KEY)) && (value = parse_value)
-          need(:ARG_HASH_END)
           hash = {}
           hash[key[0][1]] = value
           hash
+          if new_hash = parse_arg_hash
+            hash.merge!(new_hash)
+          else
+            need(:ARG_HASH_END)
+            hash
+          end
         end
       end
 
