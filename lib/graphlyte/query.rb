@@ -43,7 +43,7 @@ module Graphlyte
         end
         str += "(#{type_new.join(", ")})"
       end
-      { query: "#{str} #{to_s(1)}", variables: Arguments::Set.new(hargs).to_h }.to_json
+      { query: "#{str} #{to_s(1)}", variables: Arguments::Set.new(hargs).to_h(true) }.to_json
     end
 
     def to_s(indent=0)
@@ -70,7 +70,7 @@ module Graphlyte
         memo
       end
     end
-    
+
     def format_fragments
       str = "\n"
       flatten(builder.>>).each do |_, fragment|

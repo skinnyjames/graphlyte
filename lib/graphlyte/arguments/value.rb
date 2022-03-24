@@ -19,10 +19,10 @@ module Graphlyte
         value.is_a? Schema::Types::Base
       end
 
-      def to_s
+      def to_s(raw = false)
         return "$#{value.to_s.to_camel_case}" if value.is_a? Symbol
         return value if value.is_a? Numeric
-        return "\"#{value}\"" if value.is_a? String
+        return "\"#{value}\"" if value.is_a?(String) && !raw
         return "null" if value.nil?
         return "$#{value.placeholder.to_camel_case}" if value.is_a? Schema::Types::Base
         value.to_s

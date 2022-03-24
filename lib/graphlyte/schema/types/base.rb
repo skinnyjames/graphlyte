@@ -27,6 +27,8 @@ module Graphlyte
               str << ", " if idx < (value.size - 1)
             end
             str << "]"
+          elsif value.is_a?(Symbol)
+            str << value.to_s
           else
             str << "#{Arguments::Value.new(value).to_s}"
           end
