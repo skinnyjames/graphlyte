@@ -9,6 +9,79 @@ describe Graphlyte do
     end
   end
 
+  it 'should support directives' do
+    query = Graphlyte.query do
+      hero(episode: Graphlyte::TYPES.episode(:episode)) do
+        name
+        friends.include(if: Graphlyte::TYPES.withFriends(:with_friends)) do
+          name
+        end
+      end
+    end
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        hero(episode: $episode) {
+          name
+          friends @include(if: $withFriends) {
+            name
+          }
+        }
+      }
+    STRING
+  end
+
+  it 'supports inline fragments' do
+    query = Graphlyte.query do
+      hero(episode: Graphlyte::TYPES.episode(:episode)) do |f|
+        f << Graphlyte.inline_fragment('Friends') do
+          something
+        end
+      end
+    end
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        hero(episode: $episode) {
+          ... on Friends {
+            something
+          }
+        }
+      }
+    STRING
+  end
+
+  it 'supports inline directives' do
+    directive = Graphlyte::Directive.new(:include, if: Graphlyte::TYPES.expandedInfo(:expanded_info))
+
+    query = Graphlyte.query do
+      hero(episode: Graphlyte::TYPES.episode(:episode)) do |f|
+        f << Graphlyte.inline_directive(directive) do
+          first_name
+          last_name
+          birthday
+        end
+      end
+    end
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        hero(episode: $episode) {
+          ... @include(if: $expandedInfo) {
+            firstName
+            lastName
+            birthday
+          }
+        }
+      }
+    STRING
+
+    expect(query.placeholders).to eql(<<~STRING.chomp)
+      :episode of episode
+      :expanded_info of expandedInfo
+    STRING
+  end
+
   it "should convert snake_case to camelCase" do
     query = Graphlyte.query do |b|
       b.snake_case_works
@@ -17,12 +90,12 @@ describe Graphlyte do
       b.User # can't avoid this
     end
     expect(query.to_s).to eql(<<~STRING)
-    {
-      snakeCaseWorks
-      __typeName
-      typeName__
-      User
-    }
+      {
+        snakeCaseWorks
+        __typeName
+        typeName__
+        User
+      }
     STRING
   end
 
@@ -40,17 +113,17 @@ describe Graphlyte do
     end
 
     expect(query_1 + query_2).to eql(<<~STRING) 
-    {
-      bulk(id: 1) {
-        ok
+      {
+        bulk(id: 1) {
+          ok
+        }
       }
-    }
-    
-    {
-      bulk(id: 2) {
-        ok
+
+      {
+        bulk(id: 2) {
+          ok
+        }
       }
-    }
     STRING
   end
 end

@@ -102,6 +102,120 @@ describe Graphlyte::Schema::Parser, :parser do
     STR
   end
 
+  it 'should parse directives' do
+    query = parse(<<~GQL)
+      query Hero($episode: Episode, $withFriends: Boolean!) {
+        hero(episode: $episode) {
+          name
+          friends @include(if: $withFriends) {
+            name
+          }
+        }
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        hero(episode: $episode) {
+          name
+          friends @include(if: $withFriends) {
+            name
+          }
+        }
+      }
+    STRING
+  end
+
+  it 'parses inline fragments' do
+    query = Graphlyte.parse <<~GQL
+      query inlineFragmentNoType($expandedInfo: Boolean) {
+        user(handle: "zuck") {
+          id
+          name
+          ... on Something {
+            firstName
+            lastName
+            birthday
+          }
+        }
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        user(handle: "zuck") {
+          id
+          name
+          ... on Something {
+            firstName
+            lastName
+            birthday
+          }
+        }
+      }
+    STRING
+  end
+
+  it 'parses inline directives' do
+    query = Graphlyte.parse <<~GQL
+      query inlineFragmentNoType($expandedInfo: Boolean) {
+        user(handle: "zuck") {
+          id
+          name
+          ... @include(if: $expandedInfo) {
+            firstName
+            lastName
+            birthday
+          }
+        }
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        user(handle: "zuck") {
+          id
+          name
+          ... @include(if: $expandedInfo) {
+            firstName
+            lastName
+            birthday
+          }
+        }
+      }
+    STRING
+  end
+
+  it 'parses inline fragments with directives' do
+    query = Graphlyte.parse <<~GQL
+      query inlineFragmentNoType($expandedInfo: Boolean) {
+        user(handle: "zuck") {
+          id
+          name
+          ... on Something @include(if: $expandedInfo) {
+            firstName
+            lastName
+            birthday
+          }
+        }
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        user(handle: "zuck") {
+          id
+          name
+          ... on Something @include(if: $expandedInfo) {
+            firstName
+            lastName
+            birthday
+          }
+        }
+      }
+    STRING
+  end
+
   it "should parse fragments" do
     query = parse(<<~GQL)
       query hello {
@@ -122,7 +236,7 @@ describe Graphlyte::Schema::Parser, :parser do
       }
 
       fragment internalFragment on Idea {
-        ..thing
+        thing
       }
     GQL
 

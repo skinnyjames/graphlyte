@@ -178,6 +178,51 @@ returns
 }
 ```
 
+### modifying queries
+
+```ruby
+query = Graphlyte.parse(<<~GQL)
+  query name($projectPath: ID!, $commitSha: String) {
+    project(fullPath: $projectPath, sha: $commitSha) {
+      createdAt
+      pipelines(sha: $commitSha) {
+        nodes {
+          status
+        }
+      }
+    }
+  }
+GQL
+
+query.at('project.pipelines.nodes') do |pipeline|
+  pipeline.remove :status
+  downstream do
+    nodes do
+      active
+    end
+  end
+end
+
+puts query.to_s
+
+{
+  project(fullPath: $projectPath, sha: $commitSha) {
+    createdAt
+    pipelines(sha: $commitSha) {
+      nodes {
+        downstream {
+          nodes {
+            active
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+
+
 ## getting placeholders for a query
 
 you can call `query.placeholders` on a query to get back all of the expected variables.  This is useful when you don't know all of the variables that a query expects.
