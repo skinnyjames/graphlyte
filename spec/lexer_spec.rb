@@ -5,7 +5,7 @@ describe Graphlyte::Schema::Lexer, :parser do
         id
       }
     GQL
-    expected_tokens = [[:START_QUERY, "something"], [:FIELD_NAME, "id"], [:END_QUERY]]
+    expected_tokens = [[:EXPRESSION, 'query', "something"], [:FIELDSET], [:FIELD_NAME, "id"], [:END_FIELDSET]]
     expect(tokens).to eql(expected_tokens)
   end
 
@@ -18,7 +18,7 @@ describe Graphlyte::Schema::Lexer, :parser do
         }
       }
     GQL
-    expected_tokens = [[:START_QUERY, "something"], [:FIELD_NAME, "user"], [:START_FIELD], [:FIELD_NAME, "id"], [:FIELD_NAME, "name"], [:END_FIELD], [:END_QUERY]]
+    expected_tokens = [[:EXPRESSION, 'query', "something"], [:FIELDSET], [:FIELD_NAME, "user"], [:FIELDSET], [:FIELD_NAME, "id"], [:FIELD_NAME, "name"], [:END_FIELDSET], [:END_FIELDSET]]
     expect(tokens).to eql(expected_tokens)
   end
 
@@ -29,26 +29,27 @@ describe Graphlyte::Schema::Lexer, :parser do
       }
     GQL
     expected_tokens = [
-      [:START_QUERY, "something"],
+      [:EXPRESSION, 'query', "something"],
       [:START_ARGS],
       [:ARG_KEY, "int"],
       [:ARG_NUM_VALUE, 1],
       [:ARG_KEY, "string"],
       [:ARG_STRING_VALUE, "string"],
       [:ARG_KEY, "arr"],
-      [:ARG_ARRAY_START],
+      [:ARG_ARRAY],
       [:ARG_NUM_VALUE, 1],
       [:ARG_NUM_VALUE, 2],
       [:ARG_NUM_VALUE, 3],
       [:ARG_ARRAY_END],
       [:ARG_KEY, "obj"],
-      [:ARG_HASH_START],
+      [:ARG_HASH],
       [:ARG_KEY, "int"],
       [:ARG_NUM_VALUE, 1],
       [:ARG_HASH_END],
       [:END_ARGS],
+      [:FIELDSET],
       [:FIELD_NAME, "id"],
-      [:END_QUERY]
+      [:END_FIELDSET]
     ]
     expect(tokens).to eql(expected_tokens)
   end
@@ -62,20 +63,21 @@ describe Graphlyte::Schema::Lexer, :parser do
       }
     GQL
     expected_tokens = [
-      [:START_QUERY, "something"],
+      [:EXPRESSION, 'query', "something"],
       [:START_ARGS],
       [:SPECIAL_ARG_KEY, "id"],
       [:SPECIAL_ARG_VAL, "ID!"],
       [:END_ARGS],
+      [:FIELDSET],
       [:FIELD_NAME, "name"],
       [:START_ARGS],
       [:ARG_KEY, "id"],
       [:SPECIAL_ARG_REF, "id"],
       [:END_ARGS],
-      [:START_FIELD],
+      [:FIELDSET],
       [:FIELD_NAME, "user"],
-      [:END_FIELD],
-      [:END_QUERY]
+      [:END_FIELDSET],
+      [:END_FIELDSET]
     ]
     expect(tokens).to eql(expected_tokens)
   end
@@ -93,13 +95,15 @@ describe Graphlyte::Schema::Lexer, :parser do
     GQL
 
     expected_tokens = [
-      [:START_QUERY, "something"],
+      [:EXPRESSION, 'query', "something"],
+      [:FIELDSET],
       [:FRAGMENT_REF, "fragmentRef"],
-      [:END_QUERY],
-      [:START_FRAGMENT, "fragmentRef", "Something"],
+      [:END_FIELDSET],
+      [:FRAGMENT, "fragmentRef", "Something"],
+      [:FIELDSET],
       [:FIELD_NAME, "id"],
       [:FIELD_NAME, "name"],
-      [:END_FRAGMENT]
+      [:END_FIELDSET]
     ]
     expect(tokens).to eql(expected_tokens)
   end
