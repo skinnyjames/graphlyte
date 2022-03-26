@@ -13,18 +13,31 @@ module Graphlyte
         fields
       end
 
+      def skip_fieldset
+        expect(:FIELDSET)
+        parse_fields
+        need(:END_FIELDSET)
+      end
+
       def parse_field
         alias_field = expect(:ALIAS)
         if token = expect(:FRAGMENT_REF)
           raise "Can't find fragment #{token[0][1]}" unless fragments_dictionary[token[0][1]]
           fragments_dictionary[token[0][1]]
-        elsif field = expect(:FIELD_NAME)
+        elsif expect(:INLINE_FRAGMENT)
+          field = parse_inline_fragment
+        elsif expect(:FIELDSET)
+
+        elsif (field = expect(:FIELD_NAME))
           args = parse_args
-          if fieldset = parse_fieldset
-            need(:END_FIELD)
-            field = Field.new(field[0][1], fieldset, args)
+          directive = parse_directive
+
+          if builder = parse_fieldset_into_builder
+            need(:END_FIELDSET)
+            fieldset = Fieldset.new(builder: builder)
+            field = Field.new(field[0][1], fieldset, args, directive: directive)
           else
-            field = Field.new(field[0][1], Fieldset.empty, args)
+            field = Field.new(field[0][1], Fieldset.empty, args, directive: directive)
           end
 
           if alias_field
@@ -35,10 +48,29 @@ module Graphlyte
         end
       end
 
-      def parse_fieldset
-        if expect(:START_FIELD)
+      def parse_inline_fragment
+        model_name = expect(:MODEL_NAME)&.dig(0, 1)
+        directive = parse_directive
+        inputs = directive ? (parse_args || {}) : {}
+        fields = expect(:FIELDSET) ? parse_fields : []
+        need(:END_FIELDSET)
+
+        InlineFragment.new(model_name, directive: directive, builder: Builder.new(fields), **inputs)
+      end
+
+      def parse_directive
+        if token = expect(:DIRECTIVE)
+          inputs = parse_args || {}
+
+          Directive.new(token[0][1], **inputs)
+        end
+      end
+
+      def parse_fieldset_into_builder
+        fields = []
+        if expect(:FIELDSET)
           fields = parse_fields
-          Fieldset.new(builder: Builder.new(fields))
+          Builder.new(fields)
         end
       end
 
@@ -51,7 +83,7 @@ module Graphlyte
       end
 
       def parse_default
-        if expect(:START_DEFAULT_VALUE)
+        if expect(:DEFAULT_VALUE)
           value = parse_value
           need(:END_DEFAULT_VALUE)
           value
@@ -89,9 +121,9 @@ module Graphlyte
           @special_args[ref]
         elsif token = expect(:SPECIAL_ARG_VAL)
           token[0][1]
-        elsif token = expect(:ARG_HASH_START)
+        elsif token = expect(:ARG_HASH)
           parse_arg_hash
-        elsif expect(:ARG_ARRAY_START)
+        elsif expect(:ARG_ARRAY)
           parse_arg_array
         end
       end
@@ -134,6 +166,10 @@ module Graphlyte
         end
       end
 
+      def tokens?
+        !tokens[position].nil?
+      end
+
       def need(*required_tokens)
         upcoming = tokens[position, required_tokens.size]
         expect(*required_tokens) or raise "Unexpected tokens. Expected #{required_tokens.inspect} but got #{upcoming.inspect}"
@@ -154,7 +190,7 @@ module Graphlyte
         if current_ref
           exists = sorted.any? do |frags|
             frags.find do |el|
-              el[0] == :START_FRAGMENT && el[1] == current_ref[1]
+              el[0] == :FRAGMENT && el[1] == current_ref[1]
             end
           end
           if exists
@@ -172,11 +208,11 @@ module Graphlyte
 
       def take_fragments
         aggregate = @tokens.inject({taking: false, idx: 0,  fragments: []}) do |memo, token_arr|
-          if token_arr[0] == :END_FRAGMENT
+          if token_arr[0] == :END_FIELDSET
             memo[:fragments][memo[:idx]] << token_arr
             memo[:taking] = false
             memo[:idx] += 1
-          elsif token_arr[0] === :START_FRAGMENT
+          elsif token_arr[0] === :FRAGMENT
             memo[:fragments][memo[:idx]] = [token_arr]
             memo[:taking] = true
           elsif memo[:taking]
@@ -185,6 +221,35 @@ module Graphlyte
           memo
         end
         aggregate[:fragments]
+      end
+
+      def fetch_fragments(tokens = @tokens.dup, fragment_tokens = [], memo = { active: false, starts: 0, ends: 0, idx: 0 })
+        token_arr = tokens.shift
+        return fragment_tokens if token_arr.nil?
+
+
+        if memo[:active] == true
+          fragment_tokens[memo[:idx]] << token_arr
+        end
+
+        if token_arr[0] == :END_FIELDSET && memo[:active] == true
+          memo[:ends] += 1
+          fragment_tokens[memo[:idx]] << token_arr if memo[:starts] == memo[:ends]
+
+          memo[:active] = false
+          memo[:ends] = 0
+          memo[:starts] = 0
+          memo[:idx] += 1
+        elsif token_arr[0] == :FRAGMENT
+          memo[:active] = true
+          memo[:starts] += 1
+          fragment_tokens[memo[:idx]] = [token_arr]
+        elsif token_arr[0] == :FIELDSET && memo[:active] == true
+          memo[:starts] += 1
+        end
+
+
+        fetch_fragments(tokens, fragment_tokens, memo)
       end
     end
 
@@ -205,12 +270,16 @@ module Graphlyte
       end
 
       def parse_fragment
-        if token = expect(:START_FRAGMENT)
+        if token = expect(:FRAGMENT)
           parse_args
-          builder = Builder.new parse_fields
-          fragment = Fragment.new(token[0][1], token[0][2], builder: builder)
+          if builder = parse_fieldset_into_builder
+            fragment = Fragment.new(token[0][1], token[0][2], builder: builder)
+            need(:END_FIELDSET) if tokens?
+          elsif fields = parse_fields
+            builder = Builder.new(fields)
+            fragment = Fragment.new(token[0][1], token[0][2], builder: builder)
+          end
           @fragments_dictionary[token[0][1]] = fragment
-          need(:END_FRAGMENT)
         end
       end
     end
@@ -227,41 +296,42 @@ module Graphlyte
 
       def initialize(tokens)
         @tokens = tokens
-        @fragment_tokens = sort_fragments([], take_fragments)
+
+        @fragment_tokens = sort_fragments([], fetch_fragments)
         @fragments_dictionary = {}
         @fragments_dictionary = @fragment_tokens.any? ? FragmentParser.new(@fragment_tokens).parse_fragments : {}
         @position = 0
       end
 
       def parse
-        if token = expect(:START_QUERY)
-          parse_query(token[0][1])
-        elsif token = expect(:START_MUTATION)
-          parse_mutation(token[0][1])
+        if token = expect(:EXPRESSION)
+          parse_expression(token[0][1], token[0][2])
+        elsif expect(:FRAGMENT)
+          skip_fragments
+          parse
         else
           raise "INVALID"
         end
       end
 
-      def parse_query(name)
-        parse_args
-        builder = Builder.new parse_fields
-        query = Query.new(name, :query, builder: builder)
-        need(:END_QUERY)
-        query
+      def skip_fragments
+        skip_fieldset
       end
 
-      def parse_mutation(name)
-        builder = Builder.new parse_fields
-        mutation = Query.new(name, :mutation, builder: builder)
-        need(:END_MUTATION)
-        mutation
+      def parse_expression(type, name)
+        parse_args
+        fields = []
+        builder = parse_fieldset_into_builder
+        need(:END_FIELDSET)
+        query = Query.new(name, type.to_sym, builder: builder)
+        query
       end
     end
 
+    class LexerError < StandardError; end
+
     class Lexer
       attr_reader :stack, :scanner
-
       def initialize(gql, scanner: StringScanner.new(gql))
         @original_string = gql
         @scanner = scanner
@@ -269,211 +339,290 @@ module Graphlyte
       end
 
       SPECIAL_ARG_REGEX = /^\s*(?:(?<![\"\{]))([\w\!\[\]]+)(?:(?![\"\}]))/
-      SIMPLE_EXPRESSION = /(query|mutation|fragment)\s*\w+\s*on\w*.*\{\s*\n*[.|\w\s]*\}/
-      START_MAP = {
-        'query' => :START_QUERY,
-        'mutation' => :START_MUTATION,
-        'fragment' => :START_FRAGMENT
-      }
 
       def tokenize
         until scanner.eos?
-          case state
-          when :default
-            if scanner.scan /^query (\w+)/
-              @tokens << [:START_QUERY, scanner[1]]
-              push_state :query
-            elsif scanner.scan /^mutation (\w+)/
-              @tokens << [:START_MUTATION, scanner[1]]
-              push_state :mutation
-            elsif scanner.scan /\s*fragment\s*(\w+)\s*on\s*(\w+)/
-              @tokens << [:START_FRAGMENT, scanner[1], scanner[2]]
-              push_state :fragment
-            elsif scanner.scan /\s*{\s*/
-              @tokens << [:START_FIELD]
-              push_state :field
-            elsif scanner.scan /\s*}\s*/
-              @tokens << [:END_EXPRESSION_SHOULDNT_GET_THIS]
-            else
-              advance
-            end
-          when :fragment
-            if scanner.scan /\s*\}\s*/
-              @tokens << [:END_FRAGMENT]
-              pop_state
-              pop_context
-            elsif scanner.check /^\s*\{\s*/
-              if get_context == :field
-                push_state :field
-                push_context :field
-              else
-                scanner.scan /^\s*\{\s*/
-                push_context :field
-              end
-            else
-              handle_field
-            end
-          when :mutation
-            if scanner.scan /\}/
-              @tokens << [:END_MUTATION]
-              pop_state
-              pop_context
-            elsif scanner.check /^\s*\{\s*$/
-              if get_context == :field
-                push_state :field
-              else
-                scanner.scan /^\s*\{\s*$/
-                push_context :field
-              end
-            else
-              handle_field
-            end
-          when :query
-            if scanner.scan /\s*\}\s*/
-              @tokens << [:END_QUERY]
-              pop_state
-              pop_context
-            elsif scanner.check /^\s*\{\s*/
-              if get_context == :field
-                push_state :field
-                push_context :field
-              else
-                scanner.scan /^\s*\{\s*/
-                push_context :field
-              end
-            else
-              handle_field
-            end
-          when :field
-            if scanner.check /\s*\}\s*/
-              if get_context == :field
-                scanner.scan /\s*\}\s*/
-                @tokens << [:END_FIELD]
-                pop_state
-              else
-                pop_state
-              end
-            else
-              handle_field
-            end
-          when :hash_arguments
-            handle_hash_arguments
-          when :array_arguments
-            handle_array_arguments
-          when :arguments
-            if scanner.scan /\s*\)\s*/
-              @tokens << [:END_ARGS]
-              pop_state
-            elsif scanner.scan /\=/
-              @tokens << [:START_DEFAULT_VALUE]
-              push_state :argument_defaults
-            elsif scanner.scan /,/
-              #
-            else
-              handle_shared_arguments
-            end
-          when :argument_defaults
-            if @stack.reverse.take(2).eql?([:argument_defaults, :argument_defaults])
-              @tokens << [:END_DEFAULT_VALUE]
-              pop_state
-              pop_state
-            else
-              push_state :argument_defaults
-              handle_shared_arguments
-            end
-          when :special_args
-            handle_special_args
-          end
+          tokenize_objects
         end
+
         @tokens
       end
 
-      private
+      def tokenize_objects
+        case state
+        when :default # the stack is empty, can only process top level fragments or expressions
+          if scanner.scan %r{\s*fragment\s*(\w+)\s*on\s*(\w+)}
+            @tokens << [:FRAGMENT, scanner[1], scanner[2]]
+            push_context :fragments
+            # check for a fieldset
+            if scanner.check %r[\s*{]
+              tokenize_fieldset
+            else
+              scanner.scan /\(/
+              @tokens << [:START_ARGS]
+              push_state :arguments
+            end
+          elsif scanner.check /\{/
+            push_context :fieldset
 
-      def handle_field
-        if scanner.scan /\s*\{\s*/
-          @context = :field
-          @tokens << [:START_FIELD]
-          push_state :field
-        elsif scanner.check /\.{3}(\w+)\s*\}/
-          scanner.scan /\.{3}(\w+)/
-          @tokens << [:FRAGMENT_REF, scanner[1]]
-          pop_context
-          # we need to pop state if we are nested in a field, and not in the query context
-          pop_state if get_context == :field
-        elsif scanner.scan /\.{3}(\w+)/
-          @tokens << [:FRAGMENT_REF, scanner[1]]
-        elsif scanner.scan /\s*(\w+):\s*/
-          @tokens << [:ALIAS, scanner[1]]
-        elsif scanner.check /\s*(\w+)\s*\}/
-          scanner.scan /\s*(\w+)\s*/
-          @tokens << [:FIELD_NAME, scanner[1]]
-          pop_context
-          # we need to pop state if we are nested in a field, and not in the query context
-          pop_state if get_context == :field
-        elsif scanner.scan /\s*(\w+)\s*/
-          @tokens << [:FIELD_NAME, scanner[1]]
-        elsif scanner.scan /^\s*\(/
-          @tokens << [:START_ARGS]
-          push_state :arguments
+            tokenize_fieldset
+          elsif scanner.scan %r{^(\w+) (\w+)}
+            @tokens << [:EXPRESSION, scanner[1], scanner[2]]
+            push_context :expression
+            # check for a fieldset
+            if scanner.check %r[\s*{]
+              tokenize_fieldset
+            else
+              scanner.scan /\(/
+              @tokens << [:START_ARGS]
+              push_state :arguments
+            end
+          elsif scanner.check /\s*\}/
+            if get_context == :fragments
+              end_fragment
+            elsif get_context == :expression
+              end_expression
+            end
+          else
+            advance
+          end
+        when :fieldset
+          tokenize_fields
+        when :arguments
+          tokenize_arguments
+        when :argument_defaults
+          tokenize_shared_arguments
+        when :hash_arguments
+          tokenize_hash_arguments
+        when :array_arguments
+          tokenize_array_arguments
+        when :special_args
+          tokenize_special_arguments
+        when :inline_fragment
+          tokenize_inline_fragment
+        end
+      end
+
+      def check_for_last(regex = /\s*\}/)
+        scanner.check regex
+      end
+
+      def check_for_final
+        scanner.check /\s*\}(?!\s*\})/
+      end
+
+      def check_for_not_last
+        scanner.check /\s*\}(?=\s*\})/
+      end
+
+      def tokenize_inline_fragment
+        if scanner.scan /on (\w+)/
+          @tokens << [:MODEL_NAME, scanner[1]]
+
+          pop_state
+        elsif scanner.scan /@(\w+)/
+          @tokens << [:DIRECTIVE, scanner[1]]
+
+          pop_state
         else
+          # throw an error here?
           advance
         end
       end
 
-      def handle_shared_arguments
+      def end_fieldset
+        scanner.scan /\s*\}/
+        @tokens << [:END_FIELDSET]
+        pop_state
+      end
+
+      def end_arguments
+        scanner.scan /\s*\)/
+        @tokens << [:END_ARGS]
+        pop_state
+      end
+
+      def end_fragment
+        scanner.scan /\s*\}/
+        @tokens << [:END_FRAGMENT]
+        pop_state
+        pop_context
+      end
+
+      def end_expression
+        scanner.scan /\s*\}/
+        @tokens << [:END_EXPRESSION]
+        pop_state
+        pop_context
+      end
+
+      # to tired to figure out why this is right now
+      def tokenize_argument_defaults
+        if scanner.scan /\)/
+          @tokens << [:END_DEFAULT_VALUE]
+          pop_state
+        else
+          tokenize_shared_arguments
+        end
+      end
+
+      def tokenize_special_arguments
+        if scanner.check SPECIAL_ARG_REGEX
+          scanner.scan SPECIAL_ARG_REGEX
+
+          @tokens << [:SPECIAL_ARG_VAL, scanner[1]]
+
+          pop_state
+
+          end_arguments if check_for_last(/\s*\)/)
+        else
+          # revisit this.. should we throw an error here?
+          pop_state
+          raise LexerError, "why can't we parse #{scanner.peek(5)}"
+        end
+      end
+
+      def tokenize_array_arguments
+        if scanner.scan /\]/
+          @tokens << [:ARG_ARRAY_END]
+
+          pop_state
+          # if check_for_last(')')
+          #   pop_state
+          # end
+        else
+          tokenize_shared_arguments
+        end
+      end
+
+      def tokenize_hash_arguments
+        if scanner.scan /\}/
+          @tokens << [:ARG_HASH_END]
+
+          pop_state
+          # if this is the last argument in the list, maybe get back to the field scope?
+          # if check_for_last(')')
+          #   pop_state
+          # end
+        else
+          tokenize_shared_arguments
+        end
+      end
+
+      def tokenize_arguments
+        # pop argument state if arguments are finished
+        if scanner.scan %r{\)}
+          @tokens << [:END_ARGS]
+
+          pop_state
+        # something(argument: $argument = true)
+        #                               ^
+        elsif scanner.scan %r{=}
+          @tokens << [:DEFAULT_VALUE]
+
+          push_state :argument_defaults
+        # noop, should expect this, but not important
+        elsif scanner.scan %r{,}
+          nil
+        else
+          tokenize_shared_arguments
+        end
+      end
+
+      def tokenize_shared_arguments
         if scanner.scan /^(\w+):/
           @tokens << [:ARG_KEY, scanner[1]]
-        elsif scanner.scan /^\s*\{\s*?/
-          @tokens << [:ARG_HASH_START]
+        elsif scanner.scan %r[{]
+          @tokens << [:ARG_HASH]
+
           push_state :hash_arguments
-        elsif scanner.scan /\s*\[\s*/
-          @tokens << [:ARG_ARRAY_START]
+        elsif scanner.scan /\[/
+          @tokens << [:ARG_ARRAY]
+
           push_state :array_arguments
-        elsif scanner.scan /\s?\"([\w\s]+)\"/
+        elsif scanner.scan %r{"(.*?)"}
           @tokens << [:ARG_STRING_VALUE, scanner[1]]
-        elsif scanner.scan /\s?(\d+\.\d+)/
+
+          end_arguments if check_for_last(/\s*\)/)
+        elsif scanner.scan /(\d+\.\d+)/
           @tokens << [:ARG_FLOAT_VALUE, scanner[1].to_f]
-        elsif scanner.scan /\s?(\d+)/
+
+          end_arguments if check_for_last(/\s*\)/)
+        elsif scanner.scan /(\d+)/
           @tokens << [:ARG_NUM_VALUE, scanner[1].to_i]
-        elsif scanner.scan /\s?(true|false)\s?/
-          bool = scanner[1] == "true"
-          @tokens << [:ARG_BOOL_VALUE, bool]
+
+          end_arguments if check_for_last(/\s*\)/)
+        elsif scanner.scan /(true|false)/
+          @tokens << [:ARG_BOOL_VALUE, (scanner[1] == 'true')]
+
+          end_arguments if check_for_last(/\s*\)/)
         elsif scanner.scan /\$(\w+):/
           @tokens << [:SPECIAL_ARG_KEY, scanner[1]]
+
           push_state :special_args
         elsif scanner.scan /\$(\w+)/
           @tokens << [:SPECIAL_ARG_REF, scanner[1]]
+
+          end_arguments if check_for_last(/\s*\)/)
+        elsif scanner.scan /,/
+          # no-op
+        elsif check_for_last(/\s*\)/)
+          @tokens << [:END_DEFAULT_VALUE] if state == :argument_defaults
+          end_arguments
+          pop_state
         else
           advance
         end
       end
 
-      def handle_special_args
-        if scanner.check SPECIAL_ARG_REGEX
-          scanner.scan SPECIAL_ARG_REGEX
-          @tokens << [:SPECIAL_ARG_VAL, scanner[1]]
-          pop_state
+      def tokenize_fields
+        if scanner.check %r[{]
+          tokenize_fieldset
+        # ... on Model - or - ... @directive
+        elsif scanner.scan %r{\.{3}\s}
+          @tokens << [:INLINE_FRAGMENT]
+          push_state :inline_fragment
+        # @directive
+        elsif scanner.scan %r{@(\w+)}
+          @tokens << [:DIRECTIVE, scanner[1]]
+        # ...fragmentReference (check for last since it is a field literal)
+        elsif scanner.scan /\.{3}(\w+)/
+          @tokens << [:FRAGMENT_REF, scanner[1]]
+
+          end_fieldset while check_for_last && state == :fieldset
+        # alias:
+        elsif scanner.scan %r{(\w+):}
+          @tokens << [:ALIAS, scanner[1]]
+        # fieldLiteral
+        elsif scanner.scan %r{(\w+)}
+          @tokens << [:FIELD_NAME, scanner[1]]
+
+          end_fieldset while check_for_last && state == :fieldset
+        # (arguments: true)
+        elsif scanner.scan /^\s*\(/
+          @tokens << [:START_ARGS]
+
+          push_state :arguments
+        elsif check_for_final
+          if get_context == :fragments
+            end_fragment
+          elsif get_context == :expression
+            end_expression
+          else
+            advance
+          end
         else
-          pop_state
+          advance
         end
       end
 
-      def handle_hash_arguments
-        if scanner.scan /\}/
-          @tokens << [:ARG_HASH_END]
-          pop_state
-        else
-          handle_shared_arguments
-        end
-      end
+      def tokenize_fieldset
+        if scanner.scan %r[\s*{]
+          @tokens << [:FIELDSET]
 
-      def handle_array_arguments
-        if scanner.scan /\s*\]\s*/
-          @tokens << [:ARG_ARRAY_END]   
-          pop_state   
+          push_state :fieldset
         else
-          handle_shared_arguments
+          raise LexerError, "Expecting `{` got `#{scanner.peek(3)}`"
         end
       end
 
@@ -498,6 +647,10 @@ module Graphlyte
       end
 
       def advance
+        unless scanner.check /\s/
+          raise LexerError, "Unexpected Char: '#{scanner.peek(3)}'"
+        end
+
         scanner.pos = scanner.pos + 1
       end
 

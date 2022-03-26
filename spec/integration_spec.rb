@@ -154,7 +154,7 @@ describe Graphlyte do
     end
   end
 
-  it "should support parsing scalars" do
+  it "should support parsing scalars", :focus do
     query = parse(<<~GQL)
       query todos($todoFilter: TodoFilter) {
         allTodos(filter: $todoFilter) {
