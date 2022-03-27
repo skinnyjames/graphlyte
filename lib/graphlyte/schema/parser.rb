@@ -206,10 +206,11 @@ module Graphlyte
         end
       end
 
+      # Select the fragments tokens as an array of arrays
+      # @return Array [[[:FRAGMENT, 'foo', bar], [:FIELDSET], [:END_FIELDSET]], [[:FRAGMENT 'buzz', 'bazz']...
       def fetch_fragments(tokens = @tokens.dup, fragment_tokens = [], memo = { active: false, starts: 0, ends: 0, idx: 0 })
         token_arr = tokens.shift
         return fragment_tokens if token_arr.nil?
-
 
         if memo[:active] == true
           fragment_tokens[memo[:idx]] << token_arr
@@ -217,12 +218,12 @@ module Graphlyte
 
         if token_arr[0] == :END_FIELDSET && memo[:active] == true
           memo[:ends] += 1
-          fragment_tokens[memo[:idx]] << token_arr if memo[:starts] == memo[:ends]
-
-          memo[:active] = false
-          memo[:ends] = 0
-          memo[:starts] = 0
-          memo[:idx] += 1
+          if memo[:starts] == memo[:ends] + 1
+            memo[:active] = false
+            memo[:ends] = 0
+            memo[:starts] = 0
+            memo[:idx] += 1
+          end
         elsif token_arr[0] == :FRAGMENT
           memo[:active] = true
           memo[:starts] += 1
@@ -230,7 +231,6 @@ module Graphlyte
         elsif token_arr[0] == :FIELDSET && memo[:active] == true
           memo[:starts] += 1
         end
-
 
         fetch_fragments(tokens, fragment_tokens, memo)
       end
@@ -418,6 +418,7 @@ module Graphlyte
         scanner.scan /\s*\}/
         @tokens << [:END_FIELDSET]
         pop_state
+        pop_context if state == :default
       end
 
       def end_arguments

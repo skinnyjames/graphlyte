@@ -289,4 +289,24 @@ describe Graphlyte::Schema::Parser, :parser do
       }
     STRING
   end
+
+  # query borrowed from gitlab
+  it 'should parse complex fragments', :focus do
+    expect { parse(<<~GQL) }.not_to raise_error
+      fragment foo on Bar {
+        id 
+        hello 
+        world { 
+          okay
+        } 
+        other { 
+         thing
+        }
+      }
+
+      { 
+        ...foo
+      }
+    GQL
+  end
 end

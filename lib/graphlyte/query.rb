@@ -97,7 +97,7 @@ module Graphlyte
           elsif hargs[var.value].is_a? Integer
             memo << [var.value, "Int"]
           elsif hargs[var.value].is_a? Array
-            memo <<  "[#{merge_variable_types(var.value, hargs).first}]"
+            memo << "[#{merge_variable_types(var.value, hargs).first}]"
           end
         else
           memo << [var.value.placeholder, var.value.name, var.value.default]
