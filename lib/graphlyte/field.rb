@@ -43,7 +43,7 @@ module Graphlyte
         str += "#{actual_indent}#{@alias}: #{name}"
         str += inputs.to_s.empty? ? "()" : inputs.to_s
       elsif @directive
-        str = @directive.inflate(indent * 2, str, field: name)
+        str = @directive.inflate(indent * 2, str, field: name, args: inputs)
       else
         str += "#{actual_indent}#{name}#{inputs.to_s}"
       end

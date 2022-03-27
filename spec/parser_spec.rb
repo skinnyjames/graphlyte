@@ -261,4 +261,51 @@ describe Graphlyte::Schema::Parser, :parser do
       }
     STR
   end
+
+  it 'should parse queries with no name' do
+    query = parse(<<~GQL)
+      query {
+        id
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        id
+      }
+    STRING
+  end
+
+  it 'should parse implicit queries' do
+    query = parse(<<~GQL)
+      {
+        id 
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        id
+      }
+    STRING
+  end
+
+  it 'should parse complex fragments' do
+    expect { parse(<<~GQL) }.not_to raise_error
+      fragment foo on Bar {
+        id 
+        hello 
+        world { 
+          okay
+        } 
+        other { 
+         thing
+        }
+      }
+
+      { 
+        ...foo
+      }
+    GQL
+  end
 end

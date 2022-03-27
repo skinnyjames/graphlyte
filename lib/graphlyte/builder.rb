@@ -18,7 +18,13 @@ module Graphlyte
 
     def remove(field_symbol)
       @fields.reject! do |field|
-        field.name == field_symbol.to_s
+        field.class == Fragment ? false : field.name == field_symbol.to_s
+      end
+
+      @fields.select { |field| field.class == Fragment }.each do |fragment|
+        fragment.fields.reject! do |field|
+          field.name == field_symbol.to_s
+        end
       end
     end
     

@@ -92,24 +92,31 @@ module Graphlyte
 
       def parse_arg
         if (token = expect(:ARG_KEY)) && (value = parse_value)
-          defaults = parse_default
+          parse_default
           key = token[0][1]
-          hash = {}
-          hash[key] = value
-          hash
-        elsif (token = expect(:SPECIAL_ARG_KEY)) && (value = parse_value)
-          defaults = parse_default
-          @special_args ||= {}
           arg = {}
-          if [Array, Hash].include?(value.class)
-            arg[token[0][1]] = value
-          else
-            new_val = Schema::Types::Base.new(value, token[0][1], defaults)
-            arg[token[0][1]] = new_val
-          end
-          @special_args.merge!(arg)
-          arg
+          arg[key] = value
+        elsif (token = expect(:SPECIAL_ARG_KEY)) && (value = parse_value)
+          arg = expect_and_inflate_special_args(token, value)
         end
+
+        arg
+      end
+
+      def expect_and_inflate_special_args(token, value)
+        return { token[0][1] => value } if value.class == Schema::Types::Base
+
+        defaults = parse_default
+        @special_args ||= {}
+        arg = {}
+        if [Array, Hash].include?(value.class)
+          arg[token[0][1]] = value
+        else
+          new_val = Schema::Types::Base.new(value, token[0][1], defaults)
+          arg[token[0][1]] = new_val
+        end
+        @special_args.merge!(arg)
+        arg
       end
 
       def parse_value
@@ -206,27 +213,11 @@ module Graphlyte
         end
       end
 
-      def take_fragments
-        aggregate = @tokens.inject({taking: false, idx: 0,  fragments: []}) do |memo, token_arr|
-          if token_arr[0] == :END_FIELDSET
-            memo[:fragments][memo[:idx]] << token_arr
-            memo[:taking] = false
-            memo[:idx] += 1
-          elsif token_arr[0] === :FRAGMENT
-            memo[:fragments][memo[:idx]] = [token_arr]
-            memo[:taking] = true
-          elsif memo[:taking]
-            memo[:fragments][memo[:idx]] << token_arr
-          end
-          memo
-        end
-        aggregate[:fragments]
-      end
-
+      # Select the fragments tokens as an array of arrays
+      # @return Array [[[:FRAGMENT, 'foo', bar], [:FIELDSET], [:END_FIELDSET]], [[:FRAGMENT 'buzz', 'bazz']...
       def fetch_fragments(tokens = @tokens.dup, fragment_tokens = [], memo = { active: false, starts: 0, ends: 0, idx: 0 })
         token_arr = tokens.shift
         return fragment_tokens if token_arr.nil?
-
 
         if memo[:active] == true
           fragment_tokens[memo[:idx]] << token_arr
@@ -234,12 +225,12 @@ module Graphlyte
 
         if token_arr[0] == :END_FIELDSET && memo[:active] == true
           memo[:ends] += 1
-          fragment_tokens[memo[:idx]] << token_arr if memo[:starts] == memo[:ends]
-
-          memo[:active] = false
-          memo[:ends] = 0
-          memo[:starts] = 0
-          memo[:idx] += 1
+          if memo[:starts] == memo[:ends] + 1
+            memo[:active] = false
+            memo[:ends] = 0
+            memo[:starts] = 0
+            memo[:idx] += 1
+          end
         elsif token_arr[0] == :FRAGMENT
           memo[:active] = true
           memo[:starts] += 1
@@ -247,7 +238,6 @@ module Graphlyte
         elsif token_arr[0] == :FIELDSET && memo[:active] == true
           memo[:starts] += 1
         end
-
 
         fetch_fragments(tokens, fragment_tokens, memo)
       end
@@ -363,10 +353,11 @@ module Graphlyte
               push_state :arguments
             end
           elsif scanner.check /\{/
+            @tokens << [:EXPRESSION, 'query', nil] if get_context == :default
             push_context :fieldset
 
             tokenize_fieldset
-          elsif scanner.scan %r{^(\w+) (\w+)}
+          elsif scanner.scan %r{^(\w+) (\w+)?}
             @tokens << [:EXPRESSION, scanner[1], scanner[2]]
             push_context :expression
             # check for a fieldset
@@ -391,7 +382,7 @@ module Graphlyte
         when :arguments
           tokenize_arguments
         when :argument_defaults
-          tokenize_shared_arguments
+          tokenize_argument_defaults
         when :hash_arguments
           tokenize_hash_arguments
         when :array_arguments
@@ -434,31 +425,22 @@ module Graphlyte
         scanner.scan /\s*\}/
         @tokens << [:END_FIELDSET]
         pop_state
+        pop_context if state == :default
       end
 
       def end_arguments
         scanner.scan /\s*\)/
         @tokens << [:END_ARGS]
         pop_state
-      end
-
-      def end_fragment
-        scanner.scan /\s*\}/
-        @tokens << [:END_FRAGMENT]
-        pop_state
-        pop_context
-      end
-
-      def end_expression
-        scanner.scan /\s*\}/
-        @tokens << [:END_EXPRESSION]
-        pop_state
-        pop_context
+        end_fieldset while check_for_last && state == :fieldset
       end
 
       # to tired to figure out why this is right now
       def tokenize_argument_defaults
-        if scanner.scan /\)/
+        if scanner.check /\)/
+          @tokens << [:END_DEFAULT_VALUE]
+          pop_state
+        elsif scanner.scan /[\n|,]/
           @tokens << [:END_DEFAULT_VALUE]
           pop_state
         else
@@ -509,6 +491,14 @@ module Graphlyte
         end
       end
 
+      def pop_argument_state
+        if check_for_last(/\s*\)/)
+          end_arguments
+        else
+          pop_state unless %i[argument_defaults hash_arguments array_arguments special_args arguments].include?(state)
+        end
+      end
+
       def tokenize_arguments
         # pop argument state if arguments are finished
         if scanner.scan %r{\)}
@@ -516,7 +506,6 @@ module Graphlyte
 
           pop_state
         # something(argument: $argument = true)
-        #                               ^
         elsif scanner.scan %r{=}
           @tokens << [:DEFAULT_VALUE]
 
@@ -543,19 +532,19 @@ module Graphlyte
         elsif scanner.scan %r{"(.*?)"}
           @tokens << [:ARG_STRING_VALUE, scanner[1]]
 
-          end_arguments if check_for_last(/\s*\)/)
+          pop_argument_state
         elsif scanner.scan /(\d+\.\d+)/
           @tokens << [:ARG_FLOAT_VALUE, scanner[1].to_f]
 
-          end_arguments if check_for_last(/\s*\)/)
+          pop_argument_state
         elsif scanner.scan /(\d+)/
           @tokens << [:ARG_NUM_VALUE, scanner[1].to_i]
 
-          end_arguments if check_for_last(/\s*\)/)
+          pop_argument_state
         elsif scanner.scan /(true|false)/
           @tokens << [:ARG_BOOL_VALUE, (scanner[1] == 'true')]
 
-          end_arguments if check_for_last(/\s*\)/)
+          pop_argument_state
         elsif scanner.scan /\$(\w+):/
           @tokens << [:SPECIAL_ARG_KEY, scanner[1]]
 
@@ -563,7 +552,7 @@ module Graphlyte
         elsif scanner.scan /\$(\w+)/
           @tokens << [:SPECIAL_ARG_REF, scanner[1]]
 
-          end_arguments if check_for_last(/\s*\)/)
+          pop_argument_state
         elsif scanner.scan /,/
           # no-op
         elsif check_for_last(/\s*\)/)
@@ -585,7 +574,9 @@ module Graphlyte
         # @directive
         elsif scanner.scan %r{@(\w+)}
           @tokens << [:DIRECTIVE, scanner[1]]
-        # ...fragmentReference (check for last since it is a field literal)
+
+          end_fieldset while check_for_last && state == :fieldset
+          # ...fragmentReference (check for last since it is a field literal)
         elsif scanner.scan /\.{3}(\w+)/
           @tokens << [:FRAGMENT_REF, scanner[1]]
 
@@ -603,14 +594,6 @@ module Graphlyte
           @tokens << [:START_ARGS]
 
           push_state :arguments
-        elsif check_for_final
-          if get_context == :fragments
-            end_fragment
-          elsif get_context == :expression
-            end_expression
-          else
-            advance
-          end
         else
           advance
         end
@@ -648,7 +631,7 @@ module Graphlyte
 
       def advance
         unless scanner.check /\s/
-          raise LexerError, "Unexpected Char: '#{scanner.peek(3)}'"
+          raise LexerError, "Unexpected Char: '#{scanner.peek(20)}'"
         end
 
         scanner.pos = scanner.pos + 1
