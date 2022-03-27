@@ -11,6 +11,8 @@ module Graphlyte
 
       if token == '*'
         fields.each do |field|
+          next if field.class == Fragment
+
           modify(field.fieldset.fields, [token], &block)
           field.fieldset.builder.instance_eval(&block) unless field.fieldset.fields.empty?
         end
