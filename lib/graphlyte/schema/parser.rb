@@ -206,23 +206,6 @@ module Graphlyte
         end
       end
 
-      def take_fragments
-        aggregate = @tokens.inject({taking: false, idx: 0,  fragments: []}) do |memo, token_arr|
-          if token_arr[0] == :END_FIELDSET
-            memo[:fragments][memo[:idx]] << token_arr
-            memo[:taking] = false
-            memo[:idx] += 1
-          elsif token_arr[0] === :FRAGMENT
-            memo[:fragments][memo[:idx]] = [token_arr]
-            memo[:taking] = true
-          elsif memo[:taking]
-            memo[:fragments][memo[:idx]] << token_arr
-          end
-          memo
-        end
-        aggregate[:fragments]
-      end
-
       def fetch_fragments(tokens = @tokens.dup, fragment_tokens = [], memo = { active: false, starts: 0, ends: 0, idx: 0 })
         token_arr = tokens.shift
         return fragment_tokens if token_arr.nil?
@@ -443,20 +426,6 @@ module Graphlyte
         pop_state
       end
 
-      def end_fragment
-        scanner.scan /\s*\}/
-        @tokens << [:END_FRAGMENT]
-        pop_state
-        pop_context
-      end
-
-      def end_expression
-        scanner.scan /\s*\}/
-        @tokens << [:END_EXPRESSION]
-        pop_state
-        pop_context
-      end
-
       # to tired to figure out why this is right now
       def tokenize_argument_defaults
         if scanner.scan /\)/
@@ -604,14 +573,6 @@ module Graphlyte
           @tokens << [:START_ARGS]
 
           push_state :arguments
-        elsif check_for_final
-          if get_context == :fragments
-            end_fragment
-          elsif get_context == :expression
-            end_expression
-          else
-            advance
-          end
         else
           advance
         end
