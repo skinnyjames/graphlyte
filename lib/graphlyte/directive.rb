@@ -9,10 +9,12 @@ module Graphlyte
       @inputs = Arguments::Set.new(hargs)
     end
 
-    def inflate(indent, string, field: nil)
+    def inflate(indent, string, field: nil, args: nil)
       # add directive after fieldname?
       string += ' ' * indent
-      string += "#{field} " if field
+      string += "#{field}" if field
+      string += args.to_s unless args.to_s&.empty?
+      string += ' '
       string += "@#{name}"
       string += @inputs.to_s unless @inputs.to_s.empty?
       string

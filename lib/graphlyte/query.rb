@@ -119,7 +119,7 @@ module Graphlyte
     def flatten_variables(fields, variables=[])
       fields.each do |field|
         variables.concat field.inputs.extract_variables unless [InlineFragment, Fragment].include? field.class
-        variables.concat field.directive.inputs.extract_variables if field.class == InlineFragment && field.directive
+        variables.concat field.directive.inputs.extract_variables if field.directive
         if [InlineFragment, Fragment].include? field.class
           flatten_variables(field.fields, variables)
         else
