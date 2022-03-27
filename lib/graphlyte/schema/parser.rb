@@ -363,10 +363,11 @@ module Graphlyte
               push_state :arguments
             end
           elsif scanner.check /\{/
+            @tokens << [:EXPRESSION, 'query', nil] if get_context == :default
             push_context :fieldset
 
             tokenize_fieldset
-          elsif scanner.scan %r{^(\w+) (\w+)}
+          elsif scanner.scan %r{^(\w+) (\w+)?}
             @tokens << [:EXPRESSION, scanner[1], scanner[2]]
             push_context :expression
             # check for a fieldset

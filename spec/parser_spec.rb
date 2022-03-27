@@ -261,4 +261,32 @@ describe Graphlyte::Schema::Parser, :parser do
       }
     STR
   end
+
+  it 'should parse queries with no name' do
+    query = parse(<<~GQL)
+      query {
+        id
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        id
+      }
+    STRING
+  end
+
+  it 'should parse implicit queries' do
+    query = parse(<<~GQL)
+      {
+        id 
+      }
+    GQL
+
+    expect(query.to_s).to eql(<<~STRING)
+      {
+        id
+      }
+    STRING
+  end
 end
