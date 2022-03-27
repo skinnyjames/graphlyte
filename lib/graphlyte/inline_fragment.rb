@@ -15,10 +15,10 @@ module Graphlyte
 
     def to_s(indent=0)
       actual_indent = ("\s" * indent) * 2
-      string = '... '
-      string += "on #{model_name}" if model_name
+      string = '...'
+      string += " on #{model_name}" if model_name
       inflate_indent = model_name ? 1 : 0
-      string = directive.inflate(inflate_indent, string) if directive
+      string = directive.inflate(0, string) if directive
       string += " {\n"
       string += super(indent + 1)
       string += "\n#{actual_indent}}"

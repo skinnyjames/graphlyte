@@ -92,7 +92,10 @@ module Graphlyte
 
       def parse_arg
         if (token = expect(:ARG_KEY)) && (value = parse_value)
-          arg = expect_and_inflate_special_args(token, value)
+          parse_default
+          key = token[0][1]
+          arg = {}
+          arg[key] = value
         elsif (token = expect(:SPECIAL_ARG_KEY)) && (value = parse_value)
           arg = expect_and_inflate_special_args(token, value)
         end
@@ -118,8 +121,7 @@ module Graphlyte
 
       def parse_value
         if token = expect(:ARG_NUM_VALUE) || expect(:ARG_STRING_VALUE) || expect(:ARG_BOOL_VALUE) || expect(:ARG_FLOAT_VALUE)
-          ref = token[0][1]
-          @special_args[ref] || ref
+          token[0][1]
         elsif token = expect(:SPECIAL_ARG_REF)
           ref = token[0][1]
           raise "Can't find ref $#{ref}" unless @special_args[ref]
@@ -435,7 +437,10 @@ module Graphlyte
 
       # to tired to figure out why this is right now
       def tokenize_argument_defaults
-        if scanner.scan /[\)|\n|,]/
+        if scanner.check /\)/
+          @tokens << [:END_DEFAULT_VALUE]
+          pop_state
+        elsif scanner.scan /[\n|,]/
           @tokens << [:END_DEFAULT_VALUE]
           pop_state
         else
@@ -490,7 +495,7 @@ module Graphlyte
         if check_for_last(/\s*\)/)
           end_arguments
         else
-          pop_state if state != :argument_defaults
+          pop_state unless %i[argument_defaults hash_arguments array_arguments special_args arguments].include?(state)
         end
       end
 
@@ -626,7 +631,7 @@ module Graphlyte
 
       def advance
         unless scanner.check /\s/
-          raise LexerError, "Unexpected Char: '#{scanner.peek(3)}'"
+          raise LexerError, "Unexpected Char: '#{scanner.peek(20)}'"
         end
 
         scanner.pos = scanner.pos + 1
