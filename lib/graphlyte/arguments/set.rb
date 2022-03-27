@@ -62,25 +62,15 @@ module Graphlyte
       end
 
       def expand_arguments(data)
-        data.inject({}) do |memo, (k, v)|
-          if v.is_a?(Array)
-            memo[k] = v.map do |item|
-              if item.is_a?(Value)
-                item
-              else
-                Value.new(item)
-              end
-            end
-          elsif v.is_a?(Hash)
-            memo[k] = Set.new(v)
+        data.transform_values do |value|
+          case value
+          when Array
+            value.map { |item| Value.from(item) }
+          when Hash
+            Set.new(value)
           else
-            if v.is_a?(Value)
-              memo[k] = v
-            else
-              memo[k] = Value.new(v)
-            end
+            Value.from(value)
           end
-          memo
         end
       end
     end

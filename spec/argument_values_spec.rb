@@ -1,4 +1,19 @@
 describe Graphlyte do 
+  it "supports variables" do 
+    query = Graphlyte.query do
+      arguments(foo: :bar) do
+        id
+      end 
+    end
+    expect(query.to_s).to eql(<<~STRING)
+    {
+      arguments(foo: $bar) {
+        id
+      }
+    }
+    STRING
+  end
+
   it "should support integers" do 
     query = Graphlyte.query do
       arguments(int: 1) do

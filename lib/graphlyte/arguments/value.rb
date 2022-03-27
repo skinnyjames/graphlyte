@@ -11,6 +11,12 @@ module Graphlyte
         @value = value
       end
 
+      def self.from(value)
+        return value if value.is_a? self
+
+        new(value)
+      end
+
       def symbol?
         value.is_a? Symbol
       end
