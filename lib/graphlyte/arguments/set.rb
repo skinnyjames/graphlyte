@@ -12,6 +12,22 @@ module Graphlyte
         @values = expand_arguments(data) unless data.nil?
       end
 
+      def resolve_lazy_special_args(parser_special_args)
+        @values&.each do |key, value|
+          if value.is_a?(Set)
+            value.resolve_lazy_special_args(parser_special_args) if value.is_a?(Set)
+          elsif value.is_a?(Array)
+            value.each do |it|
+              it.refresh(parser_special_args) if it.is_a?(Value)
+              it.resolve_lazy_special_args(parser_special_args) if it.is_a?(Set)
+            end
+          else
+            value.refresh(parser_special_args)
+          end
+          [key, value]
+        end.to_h
+      end
+
       def extract_variables(values=@values, variables=[])
         values&.each do |key, value|
           if value.is_a?(Set)

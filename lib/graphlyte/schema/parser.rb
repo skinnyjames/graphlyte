@@ -4,6 +4,7 @@ require_relative "../query"
 require_relative "../fragment"
 require_relative "../schema_query"
 require_relative "../types"
+require_relative "../arguments/value_literal"
 
 module Graphlyte
   module Schema
@@ -122,10 +123,20 @@ module Graphlyte
       def parse_value
         if token = expect(:ARG_NUM_VALUE) || expect(:ARG_STRING_VALUE) || expect(:ARG_BOOL_VALUE) || expect(:ARG_FLOAT_VALUE)
           token[0][1]
+        elsif token = expect(:ARG_LITERAL_VALUE)
+          Graphlyte::Arguments::ValueLiteral.new(token[0][1])
         elsif token = expect(:SPECIAL_ARG_REF)
           ref = token[0][1]
-          raise "Can't find ref $#{ref}" unless @special_args[ref]
-          @special_args[ref]
+          # can't prove if this exists yet, so lets add it to the list
+          unless @special_args&.dig(ref)
+            @refs_to_validate ||= []
+            @refs_to_validate << ref
+            -> (args) do
+              args[ref]
+            end
+          else
+            @special_args[ref]
+          end
         elsif token = expect(:SPECIAL_ARG_VAL)
           token[0][1]
         elsif token = expect(:ARG_HASH)
@@ -244,7 +255,7 @@ module Graphlyte
     end
 
     class FragmentParser
-      attr_reader :tokens, :position, :fragments_dictionary
+      attr_reader :tokens, :position, :fragments_dictionary, :special_args
 
       include ParserHelpers
 
@@ -293,14 +304,34 @@ module Graphlyte
         @position = 0
       end
 
+      def refresh_lazy_refs(fields)
+        fields.each do |field|
+          if field.is_a? Fieldset
+            refresh_lazy_refs(field.fields)
+          else
+            field.inputs.resolve_lazy_special_args(@special_args)
+            refresh_lazy_refs(field.fieldset.fields)
+          end
+        end
+      end
+
       def parse
         if token = expect(:EXPRESSION)
-          parse_expression(token[0][1], token[0][2])
+          value = parse_expression(token[0][1], token[0][2])
+
+          # validate fragment refs
+          @refs_to_validate&.each do |ref|
+            raise "Argument reference #{ref} doesn't exist" unless @special_args[ref]
+          end
+
+          refresh_lazy_refs(value.builder.>>)
+
+          value
         elsif expect(:FRAGMENT)
           skip_fragments
           parse
         else
-          raise "INVALID"
+          raise "Expression or Fragment not found"
         end
       end
 
@@ -310,7 +341,6 @@ module Graphlyte
 
       def parse_expression(type, name)
         parse_args
-        fields = []
         builder = parse_fieldset_into_builder
         need(:END_FIELDSET)
         query = Query.new(name, type.to_sym, builder: builder)
@@ -369,11 +399,7 @@ module Graphlyte
               push_state :arguments
             end
           elsif scanner.check /\s*\}/
-            if get_context == :fragments
-              end_fragment
-            elsif get_context == :expression
-              end_expression
-            end
+            end_fieldset
           else
             advance
           end
@@ -431,6 +457,7 @@ module Graphlyte
       def end_arguments
         scanner.scan /\s*\)/
         @tokens << [:END_ARGS]
+        pop_state if state == :argument_defaults
         pop_state
         end_fieldset while check_for_last && state == :fieldset
       end
@@ -493,9 +520,10 @@ module Graphlyte
 
       def pop_argument_state
         if check_for_last(/\s*\)/)
+          @tokens << [:END_DEFAULT_VALUE] if state == :argument_defaults
           end_arguments
         else
-          pop_state unless %i[argument_defaults hash_arguments array_arguments special_args arguments].include?(state)
+          pop_state unless %i[arguments argument_defaults hash_arguments array_arguments special_args].include?(state)
         end
       end
 
@@ -555,17 +583,19 @@ module Graphlyte
           pop_argument_state
         elsif scanner.scan /,/
           # no-op
+        elsif scanner.scan /([A-Za-z_"]+)/
+          @tokens << [:ARG_LITERAL_VALUE, scanner[1]]
+
         elsif check_for_last(/\s*\)/)
           @tokens << [:END_DEFAULT_VALUE] if state == :argument_defaults
           end_arguments
-          pop_state
         else
           advance
         end
       end
 
       def tokenize_fields
-        if scanner.check %r[{]
+        if scanner.check %r[\s*{]
           tokenize_fieldset
         # ... on Model - or - ... @directive
         elsif scanner.scan %r{\.{3}\s}
