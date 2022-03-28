@@ -19,6 +19,10 @@ module Graphlyte
         value.is_a? Schema::Types::Base
       end
 
+      def refresh(args)
+        @value = value.call(args) if value.is_a? Proc
+      end
+
       def to_s(raw = false)
         return "$#{value.to_s.to_camel_case}" if value.is_a? Symbol
         return value if value.is_a? Numeric
