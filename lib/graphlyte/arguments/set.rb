@@ -18,6 +18,7 @@ module Graphlyte
             value.resolve_lazy_special_args(parser_special_args) if value.is_a?(Set)
           elsif value.is_a?(Array)
             value.each do |it|
+              it.refresh(parser_special_args) if it.is_a?(Value)
               it.resolve_lazy_special_args(parser_special_args) if it.is_a?(Set)
             end
           else
