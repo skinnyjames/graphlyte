@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'graphlyte'
-  s.version     = '0.3.1'
+  s.version     = '0.3.2'
   s.licenses    = ['MIT']
   s.summary     = "craft graphql queries with ruby"
   s.description = "craft graphql queries with ruby"
