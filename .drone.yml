@@ -21,7 +21,7 @@ steps:
   commands: 
     - sleep 20
     - bundle install
-    - rspec
+    - theorize -d tests
   environment: 
     HOST: server
   depends_on: 

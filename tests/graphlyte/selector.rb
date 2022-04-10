@@ -1,7 +1,9 @@
-describe Graphlyte::Selector do
-  context 'manipulating queries' do
-    let(:query) do
-      Graphlyte.parse(<<~GQL)
+# frozen_string_literal: true
+
+module Tests
+  class Selector < Base
+    before_each do
+      @query = Graphlyte.parse(<<~GQL)
         query name($projectPath: ID!, $commitSha: String) {
           project(fullPath: $projectPath, sha: $commitSha) {
             createdAt
@@ -16,8 +18,8 @@ describe Graphlyte::Selector do
       GQL
     end
 
-    it 'adds and removes fields' do
-      query.at('project.pipelines.nodes') do |pipeline|
+    test 'adds and removes fields' do
+      @query.at('project.pipelines.nodes') do |pipeline|
         remove :status
         downstream do
           nodes do
@@ -26,7 +28,7 @@ describe Graphlyte::Selector do
         end
       end
 
-      expect(query.to_s).to eql(<<~STRING)
+      expect(@query.to_s).to eql(<<~STRING)
         {
           project(fullPath: $projectPath, sha: $commitSha) {
             createdAt
