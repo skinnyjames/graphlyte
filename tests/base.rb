@@ -1,6 +1,15 @@
 # frozen_string_literal: true
 require 'rspec/expectations'
 require 'rest_client'
+require 'simplecov'
+require 'simplecov-html'
+require 'simplecov-cobertura'
+
+SimpleCov.formatters = SimpleCov::Formatter::MultiFormatter.new([SimpleCov::Formatter::CoberturaFormatter, SimpleCov::Formatter::HTMLFormatter])
+SimpleCov.start do
+  add_filter '/tests/'
+end
+
 require_relative "../lib/graphlyte"
 
 module Tests
