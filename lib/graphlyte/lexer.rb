@@ -74,14 +74,25 @@ module Graphlyte
       end
     end
 
+    class NumericLiteral
+      attr_reader :integer_part, :fractional_part, :exponent_part, :negated
+
+      def initialize(integer_part, fractional_part, exponent_part, negated)
+        @integer_part = integer_part
+        @fractional_part = fractional_part
+        @exponent_part = exponent_part
+        @negated = negated
+      end
+    end
+
     attr_reader :source, :tokens
     attr_accessor :line, :column, :index, :lexeme_start_p
 
     def initialize(source)
       @source = source
       @tokens = []
-      @line = 0
-      @column = 0
+      @line = 1
+      @column = 1
       @index = 0
       @lexeme_start_p = Position.new(0, 0)
     end
@@ -116,12 +127,29 @@ module Graphlyte
       source[lookahead_p]
     end
 
-    def match(string)
-      string.chars.each_with_index.all? do |char, offset|
-        lookahead(offset) == char
+    def match(str)
+      str.chars.each_with_index.all? do |char, offset|
+        lookahead(offset + 1) == char
       end
     end
+
+    def lex_error(msg)
+      raise LexError, "#{msg} at #{line}:#{column}"
+    end
+
+    def one_of(strings)
+      s = strings.find { match(_1) }
+      return if s.nil?
+
+      seek(s.length)
+
+      s
+    end
     
+    def string(c)
+      raise('todo')
+    end
+
     def take_while(&block)
       chars = []
       while yield(lookahead)
@@ -152,38 +180,34 @@ module Graphlyte
 
     def tokenize
       self.lexeme_start_p = current_position
-      token = nil
+
+      token = next_token
+
+      tokens << token if token
+    end
+
+    def next_token
+      if punctator = one_of(PUNCTATOR)
+        return Token.new(:PUNCTATOR, punctator, current_location)
+      end
+
+      if lf = one_of([LINEFEED, "#{CARRIAGE_RETURN}#{LINEFEED}"])
+        self.line += 1
+        self.column = 1
+
+        return
+      end
 
       c = consume
 
       return if IGNORED.include?(c)
       return ignore_comment_line if c == COMMENT_CHAR
 
-      if NEW_LINE.include?(c)
-        self.line += 1
-        self.column = 0
-        ignore_newlines
+      return name(c) if name_start?(c)
+      return string(c) if string_start?(c)
+      return number(c) if numeric_start?(c)
 
-        return
-      end
-
-      token =
-        if punctator = PUNCTATOR.find { match(_1) }
-          seek(punctator.length)
-          Token.new(:PUNCTATOR, punctator, current_location)
-        elsif name_start?(c)
-          name(c)
-        elsif string_start?(c)
-          string
-        elsif numeric_start?(c)
-          number
-        end
-
-      if token
-        tokens << token
-      else
-        raise LexError, "Unknown character: #{c.inspect} at #{current_location}"
-      end
+      lex_error("Unexpected character: #{c.inspect}")
     end
 
     def string_start?(c)
@@ -191,7 +215,49 @@ module Graphlyte
     end
 
     def numeric_start?(c)
-      false
+      if '-' == c
+        DIGITS.include?(lookahead) 
+      else
+        c != '0' && DIGITS.include?(c)
+      end
+    end
+
+    def number(c)
+      i = index - 1
+
+      is_negated = c == '-'
+
+      int_part = is_negated ? [] : [c]
+      int_part += take_while { digit?(_1) }
+
+      frac_part = fractional_part
+      exp_part = exponent_part
+
+      j = index
+
+      value = NumericLiteral.new(int_part, frac_part, exp_part, is_negated)
+      str = source[i..j]
+
+      Token.new(:NUMBER, str, current_location, literal: value) 
+    end
+
+    def fractional_part
+      return unless one_of(['.'])
+
+      lex_error("Expected a digit, got #{lookahead}") unless digit?(lookahead)
+      
+      take_while { digit?(_1) }
+    end
+
+    def exponent_part
+      return unless one_of(%w[e E])
+
+      sign = one_of(%w[- +])
+      lex_error("Expected a digit, got #{lookahead}") unless digit?(lookahead)
+
+      digits = take_while { digit?(_1) }
+
+      [sign, digits]
     end
 
     def name(c)
@@ -221,17 +287,9 @@ module Graphlyte
     end
 
     def ignore_comment_line
-      consume while !NEW_LINE.include?(lookahead)
+      take_while { !NEW_LINE.include?(_1) }
 
-      nil
-    end
-
-    def ignore_newlines
-      while lookahead == LINEFEED
-        consume
-        self.line += 1
-        self.column = 0
-      end
+      :skip
     end
   end
 end
