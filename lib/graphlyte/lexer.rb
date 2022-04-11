@@ -14,6 +14,8 @@ module Graphlyte
     SPACE = "\u0020"
     WHITESPACE = [HORIZONTAL_TAB, SPACE].freeze
     COMMENT_CHAR = '#'
+    DOUBLE_QUOTE = '"'
+    BACK_QUOTE = '\\'
     COMMA = ','
     UNICODE_BOM = "\ufeff"
     IGNORED = [UNICODE_BOM, COMMA, *WHITESPACE].freeze
@@ -138,16 +140,85 @@ module Graphlyte
     end
 
     def one_of(strings)
-      s = strings.find { match(_1) }
-      return if s.nil?
+      strings.each do |s|
+        return s if consume(s)
+      end
 
-      seek(s.length)
-
-      s
+      nil
     end
     
     def string(c)
-      raise('todo')
+      i = index - 1
+
+      content = if lookahead == DOUBLE_QUOTE && lookahead(2) != DOUBLE_QUOTE
+        consume
+        '' # The empty string
+      elsif match('""') # Block string
+        block_string_content
+      else
+        string_content
+      end
+
+      j = index
+      src = source[i...j]
+
+      Token.new(:STRING, src, current_location, literal: content)
+    end
+
+    def string_content
+      chars = []
+      while char = string_character
+        chars << char
+      end
+
+      lex_error('Unterminated string') unless consume(DOUBLE_QUOTE)
+
+      chars.join('')
+    end
+
+    def string_character
+      return if lookahead == DOUBLE_QUOTE
+
+      c = consume
+
+      lex_error("Illegal character #{c.inspect}") if NEW_LINE.include?(c)
+
+      if c == BACK_QUOTE
+        escaped_character
+      else
+        c
+      end
+    end
+
+    def escaped_character
+      c = consume
+
+      case c
+      when DOUBLE_QUOTE then DOUBLE_QUOTE
+      when BACK_QUOTE then BACK_QUOTE
+      when '/' then '/'
+      when 'b' then "\b"
+      when 'f' then "\f"
+      when 'n' then LINEFEED
+      when 'r' then "\r"
+      when 't' then "\t"
+      when 'u' then
+        char_code = [1, 2, 3, 4].map do
+          d = consume
+          hex_digit = (digit?(d) || ('a' ... 'f').cover?(d.downcase))
+          lex_error("Expected a hex digit in unicode escape sequence. Got #{d.inspect}") unless hex_digit
+
+          d
+        end
+
+        char_code.join('').hex.chr
+      else
+        lex_error("Unexpected escaped character in string: #{c}")
+      end
+    end
+
+    def block_string_content
+      lex_error('Unterminated string') unless consume(BLOCK_QUOTE)
     end
 
     def take_while(&block)
@@ -163,10 +234,13 @@ module Graphlyte
       self.index += n
     end
 
-    def consume
-      c = lookahead
-      self.index += 1
-      self.column += 1
+    def consume(str = nil)
+      return if str && !match(str)
+
+      c = str || lookahead
+
+      self.index += c.length
+      self.column += c.length
       c
     end
 
@@ -211,7 +285,7 @@ module Graphlyte
     end
 
     def string_start?(c)
-      false
+      '"' == c
     end
 
     def numeric_start?(c)
@@ -242,7 +316,7 @@ module Graphlyte
     end
 
     def fractional_part
-      return unless one_of(['.'])
+      return unless consume('.')
 
       lex_error("Expected a digit, got #{lookahead}") unless digit?(lookahead)
       
