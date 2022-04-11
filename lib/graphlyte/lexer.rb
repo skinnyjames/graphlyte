@@ -15,6 +15,7 @@ module Graphlyte
     WHITESPACE = [HORIZONTAL_TAB, SPACE].freeze
     COMMENT_CHAR = '#'
     DOUBLE_QUOTE = '"'
+    BLOCK_QUOTE = '"""'
     BACK_QUOTE = '\\'
     COMMA = ','
     UNICODE_BOM = "\ufeff"
@@ -65,13 +66,13 @@ module Graphlyte
     class Token
       extend Forwardable
 
-      attr_reader :type, :lexeme, :literal, :location
+      attr_reader :type, :lexeme, :value, :location
       def_delegators :@location, :line, :col, :length
 
-      def initialize(type, lexeme, location, literal: nil)
+      def initialize(type, lexeme, location, value: nil)
         @type = type
         @lexeme = lexeme
-        @literal = literal
+        @value = value
         @location = location
       end
     end
@@ -115,6 +116,10 @@ module Graphlyte
       index < source.length
     end
 
+    def eof?
+      !source_uncompleted?
+    end
+
     def self.lex(source)
       lexer = new(source)
       lexer.start_tokenization
@@ -153,7 +158,7 @@ module Graphlyte
       content = if lookahead == DOUBLE_QUOTE && lookahead(2) != DOUBLE_QUOTE
         consume
         '' # The empty string
-      elsif match('""') # Block string
+      elsif consume('""') # Block string
         block_string_content
       else
         string_content
@@ -162,7 +167,7 @@ module Graphlyte
       j = index
       src = source[i...j]
 
-      Token.new(:STRING, src, current_location, literal: content)
+      Token.new(:STRING, src, current_location, value: content)
     end
 
     def string_content
@@ -176,12 +181,13 @@ module Graphlyte
       chars.join('')
     end
 
-    def string_character
+    def string_character(block_string: false)
+      return if eof?
       return if lookahead == DOUBLE_QUOTE
 
       c = consume
 
-      lex_error("Illegal character #{c.inspect}") if NEW_LINE.include?(c)
+      lex_error("Illegal character #{c.inspect}") if !block_string && NEW_LINE.include?(c)
 
       if c == BACK_QUOTE
         escaped_character
@@ -218,7 +224,31 @@ module Graphlyte
     end
 
     def block_string_content
-      lex_error('Unterminated string') unless consume(BLOCK_QUOTE)
+      chars = []
+      terminated = false
+
+      until eof? || terminated = consume(BLOCK_QUOTE)
+        if consume('\\' + BLOCK_QUOTE)
+          chars << BLOCK_QUOTE
+        end
+        chars << '"' while consume(DOUBLE_QUOTE)
+        while char = string_character(block_string: true)
+          chars << char
+        end
+      end
+
+      lex_error('Unterminated string') unless terminated
+
+      # Strip leading and trailing blank lines
+      lines = chars.join('').lines.map(&:chomp)
+      lines = lines.drop_while { _1 =~ /^\s*$/ }
+      lines = lines.reverse.drop_while { _1 =~ /^\s*$/ }.reverse
+      # Consistent indentation
+      left_margin = lines.map do |line|
+        line.chars.take_while { _1 == ' ' }.length
+      end.min
+
+      lines.map { _1[left_margin..] }.join(LINEFEED)
     end
 
     def take_while(&block)
@@ -312,7 +342,7 @@ module Graphlyte
       value = NumericLiteral.new(int_part, frac_part, exp_part, is_negated)
       str = source[i..j]
 
-      Token.new(:NUMBER, str, current_location, literal: value) 
+      Token.new(:NUMBER, str, current_location, value: value) 
     end
 
     def fractional_part
@@ -335,9 +365,12 @@ module Graphlyte
     end
 
     def name(c)
+      i = index - 1
       value = [c] + take_while { name_continue?(_1) }
+      j = index
+      src = source[i...j]
 
-      Token.new(:NAME, value.join(''), current_location)
+      Token.new(:NAME, src, current_location, value: value.join(''))
     end
 
     def name_start?(c)
@@ -363,7 +396,7 @@ module Graphlyte
     def ignore_comment_line
       take_while { !NEW_LINE.include?(_1) }
 
-      :skip
+      return
     end
   end
 end
