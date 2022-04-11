@@ -3,6 +3,15 @@
 require "forwardable"
 
 # See: https://github.com/graphql/graphql-spec/blob/main/spec/Appendix%20B%20--%20Grammar%20Summary.md
+#
+# This module implements tokenization of
+# [Lexical Tokens](https://github.com/graphql/graphql-spec/blob/main/spec/Appendix%20B%20--%20Grammar%20Summary.md#lexical-tokens) 
+# as per the GraphQL spec.
+#
+# Usage:
+#
+#   > Graphlyte::Lexer.lex(source)
+#
 module Graphlyte
   LexError = Class.new(StandardError)
 
@@ -66,7 +75,7 @@ module Graphlyte
     class Token
       extend Forwardable
 
-      attr_reader :type, :lexeme, :value, :location
+      attr_reader :type, :lexeme, :location
       def_delegators :@location, :line, :col, :length
 
       def initialize(type, lexeme, location, value: nil)
@@ -74,6 +83,10 @@ module Graphlyte
         @lexeme = lexeme
         @value = value
         @location = location
+      end
+
+      def value
+        @value || @lexeme
       end
     end
 
@@ -85,6 +98,26 @@ module Graphlyte
         @fractional_part = fractional_part
         @exponent_part = exponent_part
         @negated = negated
+      end
+
+      def floating?
+        !!@fractional_part || !!@exponent_part
+      end
+
+      def to_s
+        s = "#{negated ? '-' : ''}#{integer_part.join('')}"
+        return s unless floating?
+
+        s << ".#{fractional_part.join('')}" if fractional_part
+        s << "e#{exponent_part.first}#{exponent_part.last.join('')}" if @exponent_part
+
+        s
+      end
+
+      def to_i
+        n = integer_part.join('').to_i
+
+        negated ? -n : n
       end
     end
 
@@ -100,13 +133,26 @@ module Graphlyte
       @lexeme_start_p = Position.new(0, 0)
     end
 
-    def start_tokenization
+    def self.lex(source)
+      lexer = new(source)
+      lexer.tokenize!
+
+      lexer.tokens
+    end
+
+    def tokenize!
       while source_uncompleted?
-        tokenize
+        self.lexeme_start_p = current_position
+
+        token = next_token
+
+        tokens << token if token
       end
 
       tokens << Token.new(:eof, nil, after_source_end_location)
     end
+
+    private
 
     def after_source_end_location
       Location.eof
@@ -118,13 +164,6 @@ module Graphlyte
 
     def eof?
       !source_uncompleted?
-    end
-
-    def self.lex(source)
-      lexer = new(source)
-      lexer.start_tokenization
-
-      lexer.tokens
     end
 
     def lookahead(offset = 1)
@@ -153,9 +192,7 @@ module Graphlyte
     end
     
     def string(c)
-      i = index - 1
-
-      content = if lookahead == DOUBLE_QUOTE && lookahead(2) != DOUBLE_QUOTE
+      if lookahead == DOUBLE_QUOTE && lookahead(2) != DOUBLE_QUOTE
         consume
         '' # The empty string
       elsif consume('""') # Block string
@@ -163,11 +200,6 @@ module Graphlyte
       else
         string_content
       end
-
-      j = index
-      src = source[i...j]
-
-      Token.new(:STRING, src, current_location, value: content)
     end
 
     def string_content
@@ -282,14 +314,6 @@ module Graphlyte
       Position.new(line, column)
     end
 
-    def tokenize
-      self.lexeme_start_p = current_position
-
-      token = next_token
-
-      tokens << token if token
-    end
-
     def next_token
       if punctator = one_of(PUNCTATOR)
         return Token.new(:PUNCTATOR, punctator, current_location)
@@ -307,9 +331,9 @@ module Graphlyte
       return if IGNORED.include?(c)
       return ignore_comment_line if c == COMMENT_CHAR
 
-      return name(c) if name_start?(c)
-      return string(c) if string_start?(c)
-      return number(c) if numeric_start?(c)
+      return to_token(:NAME)   { name(c)   } if name_start?(c)
+      return to_token(:STRING) { string(c) } if string_start?(c)
+      return to_token(:NUMBER) { number(c) } if numeric_start?(c)
 
       lex_error("Unexpected character: #{c.inspect}")
     end
@@ -326,9 +350,15 @@ module Graphlyte
       end
     end
 
-    def number(c)
+    def to_token(type)
       i = index - 1
+      value = yield
+      j = index
 
+      Token.new(type, source[i..j], current_location, value: value) 
+    end
+
+    def number(c)
       is_negated = c == '-'
 
       int_part = is_negated ? [] : [c]
@@ -337,12 +367,7 @@ module Graphlyte
       frac_part = fractional_part
       exp_part = exponent_part
 
-      j = index
-
-      value = NumericLiteral.new(int_part, frac_part, exp_part, is_negated)
-      str = source[i..j]
-
-      Token.new(:NUMBER, str, current_location, value: value) 
+      NumericLiteral.new(int_part, frac_part, exp_part, is_negated)
     end
 
     def fractional_part
@@ -365,12 +390,9 @@ module Graphlyte
     end
 
     def name(c)
-      i = index - 1
       value = [c] + take_while { name_continue?(_1) }
-      j = index
-      src = source[i...j]
 
-      Token.new(:NAME, src, current_location, value: value.join(''))
+      value.join('')
     end
 
     def name_start?(c)

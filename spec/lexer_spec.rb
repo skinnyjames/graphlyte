@@ -1,110 +1,149 @@
-describe Graphlyte::Schema::Lexer, :parser do
-  it "should lex simple queries" do
-    tokens = tokenize <<~GQL
-      query something {
-        id
-      }
+# frozen_string_literal: true
+
+require_relative '../lib/graphlyte/lexer.rb'
+
+describe Graphlyte::Lexer do
+  it 'handles names, numbers, strings and punctuation (ignoring comments and commas)' do
+    tokens = tokenize(<<~GQL)
+      # all the tokens we need to lex:
+      foo bar __typename zip123                         # names
+      baz, bim, boop                                    # comma separated
+      123 -123 3.145 1.2e100 -3E10 1e-10                # various numbers
+      "foo" "bar \\"# rab" "\\t\\n\\\\" "foo, bar, baz" # strings
+      {}()@ # assorted word-salad
     GQL
-    expected_tokens = [[:EXPRESSION, 'query', "something"], [:FIELDSET], [:FIELD_NAME, "id"], [:END_FIELDSET]]
+
+    expected_tokens = [
+      [:NAME, 'foo'],
+      [:NAME, 'bar'],
+      [:NAME, '__typename'],
+      [:NAME, 'zip123'],
+      [:NAME, 'baz'],
+      [:NAME, 'bim'],
+      [:NAME, 'boop'],
+      [:NUMBER, '123'],
+      [:NUMBER, '-123'],
+      [:NUMBER, '3.145'],
+      [:NUMBER, '1.2e100'],
+      [:NUMBER, '-3e10'],
+      [:NUMBER, '1e-10'],
+      [:STRING, "foo"],
+      [:STRING, %q(bar "# rab)],
+      [:STRING, %Q(\t\n\\)],
+      [:STRING, %Q(foo, bar, baz)],
+      [:PUNCTATOR, '{'],
+      [:PUNCTATOR, '}'],
+      [:PUNCTATOR, '('],
+      [:PUNCTATOR, ')'],
+      [:PUNCTATOR, '@'],
+      [:eof, nil]
+    ]
+
     expect(tokens).to eql(expected_tokens)
   end
 
-  it "should lex nested queries" do
-    tokens = tokenize <<~GQL
-      query something {
-        user { 
-          id
-          name
+  it 'handles block quotes' do
+    tokens = tokenize(<<~GQL)
+      123 """
+        foo bar
+          biz baz boz
+          "says who?"
+          \\"""
+        bop
+      """ 456
+    GQL
+
+    str = [
+      'foo bar',
+      '  biz baz boz',
+      '  "says who?"',
+      '  """',
+      'bop'
+    ].join("\n")
+
+    expected_tokens = [
+      [:NUMBER, '123'],
+      [:STRING, str],
+      [:NUMBER, '456'],
+      [:eof, nil]
+    ]
+
+    expect(tokens).to eql(expected_tokens)
+  end
+
+  it "should lex queries" do
+    tokens = tokenize(<<~GQL)
+      query something($var: Type!) {
+        id @client
+        thingy(arg: value, x: ONE, y: "TWO", z: 3, things: [1,2,3]) {
+          alias: field1, field2, field3
         }
       }
     GQL
-    expected_tokens = [[:EXPRESSION, 'query', "something"], [:FIELDSET], [:FIELD_NAME, "user"], [:FIELDSET], [:FIELD_NAME, "id"], [:FIELD_NAME, "name"], [:END_FIELDSET], [:END_FIELDSET]]
+
+    expected_tokens = [
+      [:NAME, 'query'],
+      [:NAME, 'something'],
+      [:PUNCTATOR, "("],
+      [:PUNCTATOR, "$"],
+      [:NAME, "var"],
+      [:PUNCTATOR, ":"],
+      [:NAME, "Type"],
+      [:PUNCTATOR, "!"],
+      [:PUNCTATOR, ")"],
+      [:PUNCTATOR, "{"],
+      [:NAME, "id"],
+      [:PUNCTATOR, "@"],
+      [:NAME, "client"],
+      [:NAME, "thingy"],
+      [:PUNCTATOR, "("],
+      [:NAME, "arg"],
+      [:PUNCTATOR, ":"],
+      [:NAME, "value"],
+      [:NAME, "x"],
+      [:PUNCTATOR, ":"],
+      [:NAME, "ONE"],
+      [:NAME, "y"],
+      [:PUNCTATOR, ":"],
+      [:STRING, "TWO"],
+      [:NAME, "z"],
+      [:PUNCTATOR, ":"],
+      [:NUMBER, "3"],
+      [:NAME, "things"],
+      [:PUNCTATOR, ":"],
+      [:PUNCTATOR, "["],
+      [:NUMBER, "1"],
+      [:NUMBER, "2"],
+      [:NUMBER, "3"],
+      [:PUNCTATOR, "]"],
+      [:PUNCTATOR, ")"],
+      [:PUNCTATOR, "{"],
+      [:NAME, "alias"],
+      [:PUNCTATOR, ":"],
+      [:NAME, "field1"],
+      [:NAME, "field2"],
+      [:NAME, "field3"],
+      [:PUNCTATOR, "}"],
+      [:PUNCTATOR, "}"],
+      [:eof, nil]
+    ]
+
     expect(tokens).to eql(expected_tokens)
   end
 
-  it "should lex simple params" do
-    tokens = tokenize <<~GQL
-      query something(int: 1, string: "string", arr: [1,2,3], obj: { int: 1 }) {
-        id
-      }
-    GQL
-    expected_tokens = [
-      [:EXPRESSION, 'query', "something"],
-      [:START_ARGS],
-      [:ARG_KEY, "int"],
-      [:ARG_NUM_VALUE, 1],
-      [:ARG_KEY, "string"],
-      [:ARG_STRING_VALUE, "string"],
-      [:ARG_KEY, "arr"],
-      [:ARG_ARRAY],
-      [:ARG_NUM_VALUE, 1],
-      [:ARG_NUM_VALUE, 2],
-      [:ARG_NUM_VALUE, 3],
-      [:ARG_ARRAY_END],
-      [:ARG_KEY, "obj"],
-      [:ARG_HASH],
-      [:ARG_KEY, "int"],
-      [:ARG_NUM_VALUE, 1],
-      [:ARG_HASH_END],
-      [:END_ARGS],
-      [:FIELDSET],
-      [:FIELD_NAME, "id"],
-      [:END_FIELDSET]
-    ]
-    expect(tokens).to eql(expected_tokens)
+  it 'raises errors on unterminated strings' do
+    expect do
+      tokenize('foo "bar 123')
+    end.to raise_error(Graphlyte::LexError)
   end
 
-  it "should lex special params" do
-    tokens = tokenize <<~GQL
-      query something($id: ID!) {
-        name(id: $id) {
-          user  
-        }
-      }
-    GQL
-    expected_tokens = [
-      [:EXPRESSION, 'query', "something"],
-      [:START_ARGS],
-      [:SPECIAL_ARG_KEY, "id"],
-      [:SPECIAL_ARG_VAL, "ID!"],
-      [:END_ARGS],
-      [:FIELDSET],
-      [:FIELD_NAME, "name"],
-      [:START_ARGS],
-      [:ARG_KEY, "id"],
-      [:SPECIAL_ARG_REF, "id"],
-      [:END_ARGS],
-      [:FIELDSET],
-      [:FIELD_NAME, "user"],
-      [:END_FIELDSET],
-      [:END_FIELDSET]
-    ]
-    expect(tokens).to eql(expected_tokens)
+  it 'raises errors on bad numeric formats' do
+    expect do
+      tokenize('123. bad')
+    end.to raise_error(Graphlyte::LexError)
   end
 
-  it "should lex fragments and fragment refs" do
-    tokens = tokenize <<~GQL
-      query something {
-        ...fragmentRef
-      }
-
-      fragment fragmentRef on Something {
-        id
-        name
-      }
-    GQL
-
-    expected_tokens = [
-      [:EXPRESSION, 'query', "something"],
-      [:FIELDSET],
-      [:FRAGMENT_REF, "fragmentRef"],
-      [:END_FIELDSET],
-      [:FRAGMENT, "fragmentRef", "Something"],
-      [:FIELDSET],
-      [:FIELD_NAME, "id"],
-      [:FIELD_NAME, "name"],
-      [:END_FIELDSET]
-    ]
-    expect(tokens).to eql(expected_tokens)
+  def tokenize(src)
+    described_class.lex(src).map { [_1.type, _1.value&.to_s] }
   end
 end
