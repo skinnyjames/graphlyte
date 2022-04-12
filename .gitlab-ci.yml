@@ -1,14 +1,35 @@
-image: "ruby:latest"
+image: "timbru31/ruby-node:latest"
 
 before_script:
-  - gem install yard
+  - bundle install
+  - npm i -g json-graphql-server@2.2.3
+
+rspec:
+  variables:
+    NODE_HOST: 0.0.0.0
+    NODE_PORT: 5000
+    HOST: 127.0.0.1
+  stage: test
+  script:
+    - nohup json-graphql-server fixture/mocks.json --p 5000 &
+    - sleep 10
+    - bundle exec rspec
+  artifacts:
+    paths:
+      - coverage/
+    reports:
+      cobertura: coverage/coverage.xml
+  coverage: '/\(\d+.\d+\%\) covered/'
 
 pages:
   stage: deploy
+  dependencies:
+    - theorize
   script:
-  - yard doc
+    - mv coverage/ public/
   artifacts:
     paths:
-    - public
+      - public
+    expire_in: 30 days
   only:
-  - main
+    - main
