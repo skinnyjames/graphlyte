@@ -1,6 +1,15 @@
-require_relative "#{__dir__}/../lib/graphlyte"
 require "rspec"
 require "rest_client"
+require 'simplecov'
+require 'simplecov-html'
+require 'simplecov-cobertura'
+
+require_relative "#{__dir__}/../lib/graphlyte"
+
+SimpleCov.formatters = SimpleCov::Formatter::MultiFormatter.new([SimpleCov::Formatter::CoberturaFormatter, SimpleCov::Formatter::HTMLFormatter])
+SimpleCov.start do
+  add_filter '/tests/'
+end
 
 module Request
   def request(json)
