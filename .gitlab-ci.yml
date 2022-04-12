@@ -24,7 +24,7 @@ rspec:
 pages:
   stage: deploy
   dependencies:
-    - theorize
+    - rspec
   script:
     - mv coverage/ public/
   artifacts:
