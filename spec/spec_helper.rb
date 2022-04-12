@@ -8,10 +8,6 @@ module Request
     RestClient.post("http://#{host}:5000/raw", json, { 'Content-Type' => "application/json", 'Accept' => 'application/json' })
   end
 
-  def tokenize(gql)
-    Graphlyte::Schema::Lexer.new(gql).tokenize
-  end
-
   def parse(gql)
     Graphlyte.parse(gql)
   end
