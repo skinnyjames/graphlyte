@@ -88,38 +88,12 @@ module Graphlyte
       def value
         @value || @lexeme
       end
-    end
 
-    class NumericLiteral
-      attr_reader :integer_part, :fractional_part, :exponent_part, :negated
-
-      def initialize(integer_part, fractional_part, exponent_part, negated)
-        @integer_part = integer_part
-        @fractional_part = fractional_part
-        @exponent_part = exponent_part
-        @negated = negated
-      end
-
-      def floating?
-        !!@fractional_part || !!@exponent_part
-      end
-
-      def to_s
-        s = "#{negated ? '-' : ''}#{integer_part.join('')}"
-        return s unless floating?
-
-        s << ".#{fractional_part.join('')}" if fractional_part
-        s << "e#{exponent_part.first}#{exponent_part.last.join('')}" if @exponent_part
-
-        s
-      end
-
-      def to_i
-        n = integer_part.join('').to_i
-
-        negated ? -n : n
+      def punctator?(value)
+        @type == :PUNCTATOR && @lexeme == value
       end
     end
+
 
     attr_reader :source, :tokens
     attr_accessor :line, :column, :index, :lexeme_start_p
@@ -344,7 +318,9 @@ module Graphlyte
 
     def numeric_start?(c)
       if '-' == c
-        DIGITS.include?(lookahead) 
+        DIGITS.include?(lookahead)
+      elsif c == '0'
+        !DIGITS.include?(lookahead)
       else
         c != '0' && DIGITS.include?(c)
       end
@@ -367,14 +343,14 @@ module Graphlyte
       frac_part = fractional_part
       exp_part = exponent_part
 
-      NumericLiteral.new(int_part, frac_part, exp_part, is_negated)
+      Syntax::NumericLiteral.new(int_part&.join(''), frac_part&.join(''), exp_part, is_negated)
     end
 
     def fractional_part
       return unless consume('.')
 
       lex_error("Expected a digit, got #{lookahead}") unless digit?(lookahead)
-      
+
       take_while { digit?(_1) }
     end
 
@@ -386,7 +362,7 @@ module Graphlyte
 
       digits = take_while { digit?(_1) }
 
-      [sign, digits]
+      [sign, digits.join('')]
     end
 
     def name(c)

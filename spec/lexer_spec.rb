@@ -3,12 +3,26 @@
 require_relative '../lib/graphlyte/lexer.rb'
 
 describe Graphlyte::Lexer do
+  it 'ignores commas, but treats them as breaks' do
+    tokens = tokenize('0,1,2,3,4')
+
+    expected_tokens = [
+      [:NUMBER, '0'],
+      [:NUMBER, '1'],
+      [:NUMBER, '2'],
+      [:NUMBER, '3'],
+      [:NUMBER, '4']
+    ]
+
+    expect(tokens.take(5)).to eql(expected_tokens)
+  end
+
   it 'handles names, numbers, strings and punctuation (ignoring comments and commas)' do
     tokens = tokenize(<<~GQL)
       # all the tokens we need to lex:
       foo bar __typename zip123                         # names
       baz, bim, boop                                    # comma separated
-      123 -123 3.145 1.2e100 -3E10 1e-10                # various numbers
+      0 -0 -1 0.10 123 -123 3.145 1.2e100 -3E10 1e-10      # various numbers
       "foo" "bar \\"# rab" "\\t\\n\\\\" "foo, bar, baz" # strings
       {}()@ # assorted word-salad
     GQL
@@ -21,6 +35,10 @@ describe Graphlyte::Lexer do
       [:NAME, 'baz'],
       [:NAME, 'bim'],
       [:NAME, 'boop'],
+      [:NUMBER, '0'],
+      [:NUMBER, '-0'],
+      [:NUMBER, '-1'],
+      [:NUMBER, '0.10'],
       [:NUMBER, '123'],
       [:NUMBER, '-123'],
       [:NUMBER, '3.145'],

@@ -1,311 +1,169 @@
-describe Graphlyte::Schema::Parser, :parser do
-  it "should parse a simple query" do
-    query = parse(<<~GQL)
-      query hello {
-        world
-      }
-    GQL
-    expect(query.class).to be(Graphlyte::Query)
-    expect(query.to_s).to eql(<<~STR)
-      {
-        world
-      }
-    STR
+# frozen_string_literal: true
+
+require_relative '../lib/graphlyte/lexer.rb'
+require_relative '../lib/graphlyte/parser.rb'
+
+require 'pry'
+require "super_diff/rspec"
+
+
+describe Graphlyte::Parser do
+  describe 'bracket' do
+    it 'parses a sequence surrounded by brackets' do
+      gql = '{ a b c }'
+      ts = Graphlyte::Lexer.lex(gql)
+      p = Graphlyte::Parser.new(tokens: ts)
+
+      names = p.bracket('{', '}') { p.parse_name }
+
+      expect(names).to eq %w[a b c]
+    end
+
+    it 'supports a limit, raising an error when it is exceeded' do
+      gql = '{ a b c }'
+      ts = Graphlyte::Lexer.lex(gql)
+      p = Graphlyte::Parser.new(tokens: ts)
+
+      expect do
+        p.bracket('{', '}', 2) { p.parse_name }
+      end.to raise_error(/Unexpected token at 1:7-1:8: "c "/)
+    end
+
+    it 'supports a limit, accepting values that are within the limit' do
+      gql = '{ a b } c'
+      ts = Graphlyte::Lexer.lex(gql)
+      p = Graphlyte::Parser.new(tokens: ts)
+
+      names = p.bracket('{', '}', 2) { p.parse_name }
+      following = p.parse_name
+
+      expect(names).to eq %w[a b]
+      expect(following).to eq 'c'
+    end
   end
 
-  it "should parse a simple mutation" do
-    mutation = parse(<<~GQL)
-      mutation hello {
-        world  
-      }
-    GQL
-    expect(mutation.class).to be(Graphlyte::Query)
-    expect(mutation.to_s).to eql(<<~STR)
-      {
-        world
-      }
-    STR
+  describe 'parse_value' do
+    it 'parses simple and compound values' do
+      gql = <<~GQL
+        !
+        $ref $raf
+        1
+        1.2
+        "some string"
+        ENUM_VALUE
+        true false null
+        [0, 1, "foo", foo, [ true, false ]],
+        { a: 0, b: 1, c: 2 }
+        !
+      GQL
+      ts = Graphlyte::Lexer.lex(gql)
+      p = Graphlyte::Parser.new(tokens: ts)
+
+      values = p.bracket('!', '!') { p.parse_value }
+
+      expect(values).to eq [
+        Graphlyte::Syntax::VariableReference.new('ref'),
+        Graphlyte::Syntax::VariableReference.new('raf'),
+        Graphlyte::Syntax::NumericLiteral.new('1', nil, nil, false),
+        Graphlyte::Syntax::NumericLiteral.new('1', '2', nil, false),
+        'some string',
+        Graphlyte::Syntax::EnumValue.new('ENUM_VALUE'),
+        true,
+        false,
+        nil,
+        [
+          Graphlyte::Syntax::NumericLiteral.new('0', nil, nil, false),
+          Graphlyte::Syntax::NumericLiteral.new('1', nil, nil, false),
+          'foo',
+          Graphlyte::Syntax::EnumValue.new('foo'),
+          [true, false]
+        ],
+        {
+          'a' => Graphlyte::Syntax::NumericLiteral.new('0', nil, nil, false),
+          'b' => Graphlyte::Syntax::NumericLiteral.new('1', nil, nil, false),
+          'c' => Graphlyte::Syntax::NumericLiteral.new('2', nil, nil, false)
+        }
+      ]
+    end
   end
 
-  it "should parse nested queries" do
-    query = parse(<<~GQL)
-      query hello {
-        nested {
-          world
-        }
-        world
-      }
+  it 'parses operations' do
+    gql = <<-GQL
+     query Foo($x: Int = 10) {
+       currentUser @client {
+         name(format: LONG), years: age @show(if: true)
+       }
+       thingy(id: $x) { foo }
+     }
     GQL
-    expect(query.to_s).to eql(<<~STR)
-      {
-        nested {
-          world
-        }
-        world
-      }
-    STR
-  end
+    ts = Graphlyte::Lexer.lex(gql)
+    p = Graphlyte::Parser.new(tokens: ts)
 
-  it "should parse arguments" do
-    query = parse(<<~GQL)
-      query hello {
-        nested(int: 1, string: "hello", float: 1.0, bool: true, arr: [1,2,3], hash: { nested: { hash: "string"}}) {
-          world
-        }
-      }
-    GQL
+    q = p.operation
 
-    expect(query.to_s).to eql(<<~STR)
-      {
-        nested(int: 1, string: "hello", float: 1.0, bool: true, arr: [1, 2, 3], hash: { nested: { hash: "string" } }) {
-          world
-        }
-      }
-    STR
-  end
+    expected = Graphlyte::Syntax::Operation.new(
+      type: :query,
+      name: 'Foo',
+      variables: [
+        Graphlyte::Syntax::VariableDefinition.new(
+          variable: 'x',
+          type: Graphlyte::Syntax::Type.new('Int'),
+          default_value: Graphlyte::Syntax::NumericLiteral.new('10', nil, nil, false),
+          directives: []
+        )
+      ],
+      directives: [],
+      selection: [
+        Graphlyte::Syntax::Field.new(
+          alias: nil,
+          name: 'currentUser',
+          arguments: nil,
+          directives: [Graphlyte::Syntax::Directive.new('client', nil)],
+          selection: [
+            Graphlyte::Syntax::Field.new(
+              alias: nil,
+              name: 'name',
+              arguments: [
+                Graphlyte::Syntax::Argument.new('format', Graphlyte::Syntax::EnumValue.new('LONG'))
+              ],
+              directives: [],
+              selection: nil
+            ),
+            Graphlyte::Syntax::Field.new(
+              alias: 'years',
+              name: 'age',
+              arguments: nil,
+              directives: [Graphlyte::Syntax::Directive.new(
+                'show',
+                [Graphlyte::Syntax::Argument.new("if", true)]
+              )],
+              selection: nil
+            )
+          ]
+        ),
+        Graphlyte::Syntax::Field.new(
+          alias: nil,
+          name: 'thingy',
+          arguments: [
+            Graphlyte::Syntax::Argument.new(
+              'id',
+              Graphlyte::Syntax::VariableReference.new('x')
+            )
+          ],
+          directives: [],
+          selection: [
+            Graphlyte::Syntax::Field.new(
+              alias: nil,
+              name: 'foo',
+              arguments: nil,
+              directives: [],
+              selection: nil
+            )
+          ]
+        )
+      ]
+    )
 
-  it "should parse special arguments" do
-    query = parse(<<~GQL)
-      query hello($id: !Int) {
-        nested(id: $id) {
-          world
-        }
-      }
-    GQL
-
-    expect(query.placeholders).to include(":id of !Int")
-    expect(query.to_s).to eql(<<~STR)
-      {
-        nested(id: $id) {
-          world
-        }
-      }
-    STR
-  end
-
-  it "should parse default arguments" do
-    query = parse(<<~GQL)
-      query hello($id: [!Int] = [1,2,3]) {
-        nested(id: $id) {
-          world
-        }
-      }
-    GQL
-
-    expect(query.placeholders).to include(":id of [!Int] with default [1, 2, 3]")
-    expect(query.to_s).to eql(<<~STR)
-      {
-        nested(id: $id) {
-          world
-        }
-      }
-    STR
-  end
-
-  it 'should parse directives' do
-    query = parse(<<~GQL)
-      query Hero($episode: Episode, $withFriends: Boolean!) {
-        hero(episode: $episode) {
-          name
-          friends @include(if: $withFriends) {
-            name
-          }
-        }
-      }
-    GQL
-
-    expect(query.to_s).to eql(<<~STRING)
-      {
-        hero(episode: $episode) {
-          name
-          friends @include(if: $withFriends) {
-            name
-          }
-        }
-      }
-    STRING
-  end
-
-  it 'parses inline fragments' do
-    query = Graphlyte.parse <<~GQL
-      query inlineFragmentNoType($expandedInfo: Boolean) {
-        user(handle: "zuck") {
-          id
-          name
-          ... on Something {
-            firstName
-            lastName
-            birthday
-          }
-        }
-      }
-    GQL
-
-    expect(query.to_s).to eql(<<~STRING)
-      {
-        user(handle: "zuck") {
-          id
-          name
-          ... on Something {
-            firstName
-            lastName
-            birthday
-          }
-        }
-      }
-    STRING
-  end
-
-  it 'parses inline directives' do
-    query = Graphlyte.parse <<~GQL
-      query inlineFragmentNoType($expandedInfo: Boolean) {
-        user(handle: "zuck") {
-          id
-          name
-          ... @include(if: $expandedInfo) {
-            firstName
-            lastName
-            birthday
-          }
-        }
-      }
-    GQL
-
-    expect(query.to_s).to eql(<<~STRING)
-      {
-        user(handle: "zuck") {
-          id
-          name
-          ... @include(if: $expandedInfo) {
-            firstName
-            lastName
-            birthday
-          }
-        }
-      }
-    STRING
-  end
-
-  it 'parses inline fragments with directives' do
-    query = Graphlyte.parse <<~GQL
-      query inlineFragmentNoType($expandedInfo: Boolean) {
-        user(handle: "zuck") {
-          id
-          name
-          ... on Something @include(if: $expandedInfo) {
-            firstName
-            lastName
-            birthday
-          }
-        }
-      }
-    GQL
-
-    expect(query.to_s).to eql(<<~STRING)
-      {
-        user(handle: "zuck") {
-          id
-          name
-          ... on Something @include(if: $expandedInfo) {
-            firstName
-            lastName
-            birthday
-          }
-        }
-      }
-    STRING
-  end
-
-  it "should parse fragments" do
-    query = parse(<<~GQL)
-      query hello {
-        ...outerFragment
-        nested {
-          ...nestedFragment
-        }
-      }
-
-      fragment nestedFragment on Idea {
-        world
-      }
-
-      fragment outerFragment on Idea {
-        outer {
-          ...internalFragment
-        }    
-      }
-
-      fragment internalFragment on Idea {
-        thing
-      }
-    GQL
-
-    expect(query.to_s).to eql(<<~STR.strip!)
-      {
-        ...outerFragment  
-        nested {
-          ...nestedFragment    
-        }
-      }
-    
-      fragment outerFragment on Idea {
-        outer {
-          ...internalFragment    
-        }
-      }
-      fragment internalFragment on Idea {
-        thing
-      }
-      fragment nestedFragment on Idea {
-        world
-      }
-    STR
-  end
-
-  it 'should parse queries with no name' do
-    query = parse(<<~GQL)
-      query {
-        id
-      }
-    GQL
-
-    expect(query.to_s).to eql(<<~STRING)
-      {
-        id
-      }
-    STRING
-  end
-
-  it 'should parse implicit queries' do
-    query = parse(<<~GQL)
-      {
-        id 
-      }
-    GQL
-
-    expect(query.to_s).to eql(<<~STRING)
-      {
-        id
-      }
-    STRING
-  end
-
-  it 'should parse complex fragments' do
-    expect { parse(<<~GQL) }.not_to raise_error
-      fragment foo on Bar {
-        id 
-        hello 
-        world { 
-          okay
-        } 
-        other { 
-         thing
-        }
-      }
-
-      { 
-        ...foo
-      }
-    GQL
+    expect(q).to eq expected
   end
 end

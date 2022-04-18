@@ -12,6 +12,8 @@ Gem::Specification.new do |s|
   s.metadata    = { "source_code_uri" => "https://gitlab.com/seanchristophergregory/graphlyte" }
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'rest-client'
+  s.add_development_dependency 'pry-byebug'
   s.add_development_dependency 'simplecov'
   s.add_development_dependency 'simplecov-cobertura'
+  s.add_development_dependency 'super_diff'
 end
