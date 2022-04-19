@@ -176,6 +176,49 @@ describe Graphlyte::Parser do
     end
   end
 
+  context 'when fields are deeply nested' do
+    let(:gql) do
+      <<-GQL
+      query {
+        a { b { c { d { e { f { g { h { i { j { k { l { m { n { o
+          }   }   }   }   }   }   }   }   }   }   }   }   }   }
+      }
+      GQL
+    end
+
+    it 'parses deeply nested fields' do
+      p = parser(gql)
+
+      q = p.operation
+
+      expect(selection_hash(q.selection)).to eq({
+        a: { b: { c: { d: { e: { f: { g: { h: { i: { j: { k: { l: { m: { n: { o: {} } } } } } } } } } } } } } }
+      })
+    end
+
+    it 'enforces a depth limit' do
+      p = parser(gql)
+      p.max_depth = 3
+
+      expect { p.operation }.to raise_error(Graphlyte::TooDeep)
+    end
+
+    it 'enforces a depth limit, allowing shallower queries' do
+      p = parser('query { a { b { c } } }')
+      p.max_depth = 3
+
+      expect(selection_hash(p.operation.selection)).to eq({
+        a: { b: { c: {} } }
+      })
+    end
+
+    def selection_hash(selection)
+      selection.to_h do |fld|
+        [fld.name.to_sym, selection_hash(fld.selection)]
+      end
+    end
+  end
+
   it 'parses operations' do
     gql = <<-GQL
      query Foo($x: Int = 10) {
@@ -185,8 +228,7 @@ describe Graphlyte::Parser do
        thingy(id: $x) { foo }
      }
     GQL
-    ts = Graphlyte::Lexer.lex(gql)
-    p = Graphlyte::Parser.new(tokens: ts)
+    p = parser(gql)
 
     q = p.operation
 

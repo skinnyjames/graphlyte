@@ -5,6 +5,12 @@ module Graphlyte
 
   ParseError = Class.new(StandardError)
 
+  TooDeep = Class.new(StandardError) do
+    def initialize(location)
+      super("Max parse depth exceeded at #{location}")
+    end
+  end
+
   Unexpected = Class.new(ParseError) do
     def initialize(token)
       super("Unexpected token at #{token.location}: #{token.lexeme.inspect}")

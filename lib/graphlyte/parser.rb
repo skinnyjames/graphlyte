@@ -5,9 +5,13 @@ require_relative './syntax'
 
 module Graphlyte
   class Parser
-    def initialize(tokens:)
+    attr_accessor :max_depth
+
+    def initialize(tokens:, max_depth: nil)
       @tokens = tokens
       @index = -1
+      @max_depth = max_depth
+      @current_depth = 0
     end
 
     def inspect
@@ -65,6 +69,8 @@ module Graphlyte
         op.selection = selection_set
       when :NAME
         try_parse do
+          d = @current_depth
+          @current_depth += 1
           op.type = t.value.to_sym
           op.name = optional { parse_name }
           op.variables = optional { variable_definitions }
@@ -277,12 +283,19 @@ module Graphlyte
 
     def bracket(lhs, rhs)
       expect(:PUNCTATOR, lhs)
+      raise TooDeep, current.location if too_deep?
 
-      ret = yield
+      ret = subfeature { yield }
 
       expect(:PUNCTATOR, rhs)
 
       ret
+    end
+
+    def too_deep?
+      return false if max_depth.nil?
+
+      @current_depth > max_depth
     end
 
     def fragment
@@ -363,6 +376,15 @@ module Graphlyte
       t = current
       @index = idx
       raise Illegal, t, ex.message
+    end
+
+    def subfeature
+      d = @current_depth
+      @current_depth += 1
+
+      yield
+    ensure
+      @current_depth = d
     end
   end
 end

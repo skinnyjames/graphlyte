@@ -53,6 +53,10 @@ module Graphlyte
         @end_pos = end_pos
       end
 
+      def to(location)
+        self.class.new(start_pos, location.end_pos)
+      end
+
       def self.eof
         new(nil, nil)
       end
