@@ -19,7 +19,7 @@ module Graphlyte
     end
 
     def peek(offset: 0)
-      @tokens[@index + offset]
+      @tokens[@index + offset] || raise("No token at #{@index + offset}")
     end
 
     def current
@@ -80,7 +80,7 @@ module Graphlyte
 
     def selection_set
       bracket('{', '}') do
-        one_of(:fragment_spread, :inline_fragment, :field_selection)
+        some { one_of(:fragment_spread, :inline_fragment, :field_selection) }
       end
     end
 
@@ -108,9 +108,16 @@ module Graphlyte
       frag
     end
 
-    def expect(type, value)
+    def expect(type, value = nil)
       t = next_token
-      raise Unexpected, t unless t.type == type && t.value == value
+
+      if value
+        raise Expected.new(t, expected: value) unless t.type == type && t.value == value
+      else
+        raise Unexpected, t unless t.type == type
+      end
+
+      t.value
     end
 
     def field_selection
@@ -132,7 +139,7 @@ module Graphlyte
     end
 
     def arguments
-      bracket('(', ')') { parse_argument }
+      bracket('(', ')') { some { parse_argument } }
     end
 
     def parse_argument
@@ -177,21 +184,25 @@ module Graphlyte
         else
           raise Unexpected, t
         end
+      else
+        raise Unexpected, t
       end
     end
 
     def parse_array_value
-      bracket('[', ']') { parse_value }
+      bracket('[', ']') { many { parse_value } }
     end
 
     def parse_object_value
       bracket('{', '}') do
-        name = parse_name
-        expect(:PUNCTATOR, ':')
-        value = parse_value
+        many do
+          name = parse_name
+          expect(:PUNCTATOR, ':')
+          value = parse_value
 
-        [name, value]
-      end.to_h
+          [name, value]
+        end.to_h
+      end
     end
 
     def directives
@@ -216,25 +227,23 @@ module Graphlyte
     end
 
     def parse_name
-      t = next_token
-
-      raise Unexpected, t unless t.type == :NAME
-
-      t.value
+      expect(:NAME)
     end
 
     def variable_definitions
       bracket('(', ')') do
-        var = Graphlyte::Syntax::VariableDefinition.new
+        some do
+          var = Graphlyte::Syntax::VariableDefinition.new
 
-        var.variable = variable_name
-        expect(:PUNCTATOR, ':')
-        var.type = type_name
+          var.variable = variable_name
+          expect(:PUNCTATOR, ':')
+          var.type = type_name
 
-        var.default_value = default_value
-        var.directives = directives
+          var.default_value = default_value
+          var.directives = directives
 
-        var
+          var
+        end
       end
     end
 
@@ -263,24 +272,13 @@ module Graphlyte
     def list_type_name
       advance
 
-      bracket('[', ']', 1) { type_name }
+      bracket('[', ']') { type_name }
     end
 
-    def bracket(lhs, rhs, limit = nil)
+    def bracket(lhs, rhs)
       expect(:PUNCTATOR, lhs)
 
-      ret = []
-      error = nil
-
-      until error || peek(offset: 1)&.punctator?(rhs) || ret.length == limit
-        begin
-          ret << yield
-        rescue ParseError => ex
-          error = ex
-        end
-      end
-
-      raise error if error
+      ret = yield
 
       expect(:PUNCTATOR, rhs)
 
@@ -332,6 +330,27 @@ module Graphlyte
       try_parse { yield }
     rescue ParseError, IllegalValue
       nil
+    end
+
+    def many(limit: nil)
+      ret = []
+
+      until ret.length == limit
+        begin
+          ret << try_parse { yield }
+        rescue ParseError
+          return ret
+        end
+      end
+
+      ret
+    end
+
+    def some
+      one = yield
+      rest = many { yield }
+
+      [one] + rest
     end
 
     def try_parse

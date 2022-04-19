@@ -8,44 +8,136 @@ require "super_diff/rspec"
 
 
 describe Graphlyte::Parser do
-  describe 'bracket' do
-    it 'parses a sequence surrounded by brackets' do
-      gql = '{ a b c }'
-      ts = Graphlyte::Lexer.lex(gql)
-      p = Graphlyte::Parser.new(tokens: ts)
+  describe 'expect' do
+    it 'asserts that the next token matches a literal' do
+      p = parser('a b c')
 
-      names = p.bracket('{', '}') { p.parse_name }
+      a = p.expect(:NAME, 'a')
+      b = p.expect(:NAME, 'b')
+
+      expect([a, b]).to eq %w[a b]
+
+      expect { p.expect(:NAME, 'd') }.to raise_error(Graphlyte::Expected)
+    end
+  end
+
+  describe 'optional' do
+    it 'backtracks on failure' do
+      p = parser('! [ {')
+
+      # succeeds
+      bang = p.optional { p.expect(:PUNCTATOR, '!') }
+      # partially succeeds, but fails in total, and thus backtracks
+      brackets = p.optional do
+        p.expect(:PUNCTATOR, '[') + p.expect(:PUNCTATOR, '[')
+      end
+      # proof that we didn't advance after the first success
+      brace = p.optional { p.expect(:PUNCTATOR, '{') }
+      bracket = p.optional { p.expect(:PUNCTATOR, '[') }
+
+      expect([bang, brackets, brace, bracket]).to eq ['!', nil, nil, '[']
+    end
+  end
+
+  describe 'one_of' do
+    it 'selects from alternatives, defined as closures' do
+      p = parser('X')
+
+      r = p.one_of(
+        ->{ p.expect(:PUNCTATOR, '!') },
+        ->{ 'got ' + p.expect(:NAME, 'X') },
+        ->{ raise 'BANG' }
+      )
+
+      expect(r).to eq 'got X'
+    end
+
+    it 'selects from alternatives, using method names' do
+      greek = Class.new(described_class) do
+        def a
+          expect(:NAME, 'a')
+          :alpha
+        end
+
+        def b
+          expect(:NAME, 'b')
+          :beta
+        end
+
+        def c
+          expect(:NAME, 'c')
+          :gamma
+        end
+      end
+
+      p = parser('b c a', klass: greek)
+
+      x = p.one_of(:a, :b, :c)
+      y = p.one_of(:a, :b, :c)
+
+      expect([x, y]).to eq %i[beta gamma]
+
+      expect { p.one_of(:b, :c) }.to raise_error(Graphlyte::Expected)
+    end
+  end
+
+  describe 'many' do
+    it 'parses zero or more repetitions, up to EOF' do
+      p = parser('a b c d e')
+
+      names = p.many { p.parse_name }
+
+      expect(names).to eq %w[a b c d e]
+    end
+
+    it 'parses zero or more repetitions' do
+      p = parser('a b c d e 1 2 3!')
+
+      names = p.many { p.parse_name }
+      nums = p.many { p.expect(:NUMBER) }
+      strings = p.many { p.expect(:STRING) }
+
+      expect(names).to eq %w[a b c d e]
+      expect(nums.map(&:to_i)).to eq [1, 2, 3]
+      expect(strings).to be_empty
+    end
+
+    it 'supports a limit' do
+      p = parser('a b c d e 1 2 3!')
+
+      names = p.many(limit: 3) { p.parse_name }
 
       expect(names).to eq %w[a b c]
     end
+  end
 
-    it 'supports a limit, raising an error when it is exceeded' do
-      gql = '{ a b c }'
-      ts = Graphlyte::Lexer.lex(gql)
-      p = Graphlyte::Parser.new(tokens: ts)
+  describe 'some' do
+    it 'parses one or more repetitions' do
+      p = parser('a b c d e 1 2 3!')
 
-      expect do
-        p.bracket('{', '}', 2) { p.parse_name }
-      end.to raise_error(/Unexpected token at 1:7-1:8: "c "/)
+      names = p.some { p.parse_name }
+      nums = p.some { p.expect(:NUMBER) }
+
+      expect(names).to eq %w[a b c d e]
+      expect(nums.map(&:to_i)).to eq [1, 2, 3]
+
+      expect { p.some { p.expect(:STRING) } }.to raise_error(Graphlyte::ParseError)
     end
+  end
 
-    it 'supports a limit, accepting values that are within the limit' do
-      gql = '{ a b } c'
-      ts = Graphlyte::Lexer.lex(gql)
-      p = Graphlyte::Parser.new(tokens: ts)
+  describe 'bracket' do
+    it 'parses a parse surrounded by brackets' do
+      p = parser('{ a b c } d e f')
 
-      names = p.bracket('{', '}', 2) { p.parse_name }
-      following = p.parse_name
+      names = p.bracket('{', '}') { p.some { p.parse_name } }
 
-      expect(names).to eq %w[a b]
-      expect(following).to eq 'c'
+      expect(names).to eq %w[a b c]
     end
   end
 
   describe 'parse_value' do
     it 'parses simple and compound values' do
-      gql = <<~GQL
-        !
+      p = parser(<<~GQL)
         $ref $raf
         1
         1.2
@@ -54,12 +146,9 @@ describe Graphlyte::Parser do
         true false null
         [0, 1, "foo", foo, [ true, false ]],
         { a: 0, b: 1, c: 2 }
-        !
       GQL
-      ts = Graphlyte::Lexer.lex(gql)
-      p = Graphlyte::Parser.new(tokens: ts)
 
-      values = p.bracket('!', '!') { p.parse_value }
+      values = p.some { p.parse_value }
 
       expect(values).to eq [
         Graphlyte::Syntax::VariableReference.new('ref'),
@@ -165,5 +254,10 @@ describe Graphlyte::Parser do
     )
 
     expect(q).to eq expected
+  end
+
+  def parser(gql, klass: described_class)
+    ts = Graphlyte::Lexer.lex(gql)
+    klass.new(tokens: ts)
   end
 end

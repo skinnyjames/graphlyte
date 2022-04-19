@@ -4,9 +4,16 @@ module Graphlyte
   IllegalValue = Class.new(StandardError)
 
   ParseError = Class.new(StandardError)
+
   Unexpected = Class.new(ParseError) do
     def initialize(token)
       super("Unexpected token at #{token.location}: #{token.lexeme.inspect}")
+    end
+  end
+
+  Expected = Class.new(ParseError) do
+    def initialize(token, expected:)
+      super("Unexpected token at #{token.location}: #{token.lexeme.inspect}, expected #{expected}")
     end
   end
 
