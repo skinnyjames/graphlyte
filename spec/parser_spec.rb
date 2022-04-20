@@ -1,16 +1,9 @@
 # frozen_string_literal: true
 
-require_relative '../lib/graphlyte/lexer.rb'
-require_relative '../lib/graphlyte/parser.rb'
-
-require 'pry'
-require "super_diff/rspec"
-
-
 describe Graphlyte::Parser do
   describe 'expect' do
-    it 'asserts that the next token matches a literal' do
-      p = parser('a b c')
+    it 'asserts that the next token matches a literal or class' do
+      p = parser('a b c 1.23')
 
       a = p.expect(:NAME, 'a')
       b = p.expect(:NAME, 'b')
@@ -18,6 +11,10 @@ describe Graphlyte::Parser do
       expect([a, b]).to eq %w[a b]
 
       expect { p.expect(:NAME, 'd') }.to raise_error(Graphlyte::Expected)
+
+      expect(p.expect(:NAME)).to eq 'c'
+      expect(p.expect(:NUMBER)).not_to be_nil
+      expect(p.expect(:EOF)).to be_nil
     end
   end
 
@@ -219,83 +216,181 @@ describe Graphlyte::Parser do
     end
   end
 
-  it 'parses operations' do
-    gql = <<-GQL
-     query Foo($x: Int = 10) {
-       currentUser @client {
-         name(format: LONG), years: age @show(if: true)
-       }
-       thingy(id: $x) { foo }
-     }
-    GQL
-    p = parser(gql)
+  describe '#operation', :fixtures do
+    it 'parses a representative mutation' do
+      p = parser(fixture('mutation_0'))
 
-    q = p.operation
+      expect(p.operation).to eq Graphlyte::Syntax::Operation.new(
+        type: :mutation,
+        name: nil,
+        variables: nil,
+        directives: [],
+        selection: [
+          Graphlyte::Syntax::Field.new(
+            alias: 'result',
+            name: 'makeFoo',
+            arguments: [
+              Graphlyte::Syntax::Argument.new('a', 'foo'),
+              Graphlyte::Syntax::Argument.new('input', {
+                'x' => Graphlyte::Syntax::NumericLiteral.new('1'),
+                'y' => Graphlyte::Syntax::EnumValue.new('FOO'),
+                'z' => {
+                  'foo' => true,
+                  'bar' => nil
+                }
+              })
+            ],
+            directives: [],
+            selection: [
+              Graphlyte::Syntax::Field.new(
+                alias: nil,
+                name: 'foo',
+                arguments: nil,
+                directives: [],
+                selection: [
+                  Graphlyte::Syntax::Field.new(
+                    alias: nil,
+                    name: 'id',
+                    arguments: nil,
+                    directives: [],
+                    selection: nil
+                  )
+                ]
+              )
+            ]
+          )
+        ]
+      )
+    end
 
-    expected = Graphlyte::Syntax::Operation.new(
-      type: :query,
-      name: 'Foo',
-      variables: [
-        Graphlyte::Syntax::VariableDefinition.new(
-          variable: 'x',
-          type: Graphlyte::Syntax::Type.new('Int'),
-          default_value: Graphlyte::Syntax::NumericLiteral.new('10', nil, nil, false),
-          directives: []
-        )
-      ],
-      directives: [],
-      selection: [
-        Graphlyte::Syntax::Field.new(
-          alias: nil,
-          name: 'currentUser',
-          arguments: nil,
-          directives: [Graphlyte::Syntax::Directive.new('client', nil)],
-          selection: [
-            Graphlyte::Syntax::Field.new(
-              alias: nil,
-              name: 'name',
-              arguments: [
-                Graphlyte::Syntax::Argument.new('format', Graphlyte::Syntax::EnumValue.new('LONG'))
-              ],
-              directives: [],
-              selection: nil
-            ),
-            Graphlyte::Syntax::Field.new(
-              alias: 'years',
-              name: 'age',
-              arguments: nil,
-              directives: [Graphlyte::Syntax::Directive.new(
-                'show',
-                [Graphlyte::Syntax::Argument.new("if", true)]
-              )],
-              selection: nil
-            )
-          ]
+    it 'parses a representative query' do
+      p = parser(fixture('query_0'))
+
+      q = p.operation
+
+      expected = Graphlyte::Syntax::Operation.new(
+        type: :query,
+        name: 'Foo',
+        variables: [
+          Graphlyte::Syntax::VariableDefinition.new(
+            variable: 'x',
+            type: Graphlyte::Syntax::Type.new('Int'),
+            default_value: Graphlyte::Syntax::NumericLiteral.new('10', nil, nil, false),
+            directives: []
+          )
+        ],
+        directives: [],
+        selection: [
+          Graphlyte::Syntax::Field.new(
+            alias: nil,
+            name: 'currentUser',
+            arguments: nil,
+            directives: [Graphlyte::Syntax::Directive.new('client', nil)],
+            selection: [
+              Graphlyte::Syntax::Field.new(
+                alias: nil,
+                name: 'name',
+                arguments: [
+                  Graphlyte::Syntax::Argument.new('format', Graphlyte::Syntax::EnumValue.new('LONG'))
+                ],
+                directives: [],
+                selection: nil
+              ),
+              Graphlyte::Syntax::Field.new(
+                alias: 'years',
+                name: 'age',
+                arguments: nil,
+                directives: [Graphlyte::Syntax::Directive.new(
+                  'show',
+                  [Graphlyte::Syntax::Argument.new("if", true)]
+                )],
+                selection: nil
+              )
+            ]
+          ),
+          Graphlyte::Syntax::Field.new(
+            alias: nil,
+            name: 'thingy',
+            arguments: [
+              Graphlyte::Syntax::Argument.new(
+                'id',
+                Graphlyte::Syntax::VariableReference.new('x')
+              )
+            ],
+            directives: [],
+            selection: [
+              Graphlyte::Syntax::Field.new(
+                alias: nil,
+                name: 'foo',
+                arguments: nil,
+                directives: [],
+                selection: nil
+              )
+            ]
+          )
+        ]
+      )
+
+      expect(q).to eq expected
+    end
+  end
+
+  describe '#document', :fixtures do
+    it 'parses a complex document' do
+      p = parser(fixture('query_with_fragment'))
+
+      doc = p.document
+
+      expect(doc).to match_structure(
+        operations: match_structure(
+          nil => match_structure(
+            selection: [
+              match_structure(
+                alias: 'antagonists',
+                name: 'hero',
+                arguments: [
+                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: 'EMPIRE'))
+                ],
+                selection: [
+                  match_structure(class: Graphlyte::Syntax::FragmentSpread, name: 'comparisonFields')
+                ]
+              ),
+              match_structure(
+                alias: 'protagonists',
+                name: 'hero',
+                arguments: [
+                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: 'JEDI'))
+                ],
+                selection: [
+                  match_structure(class: Graphlyte::Syntax::FragmentSpread, name: 'comparisonFields')
+                ]
+              )
+            ]
+          )
         ),
-        Graphlyte::Syntax::Field.new(
-          alias: nil,
-          name: 'thingy',
-          arguments: [
-            Graphlyte::Syntax::Argument.new(
-              'id',
-              Graphlyte::Syntax::VariableReference.new('x')
-            )
-          ],
-          directives: [],
-          selection: [
-            Graphlyte::Syntax::Field.new(
-              alias: nil,
-              name: 'foo',
-              arguments: nil,
-              directives: [],
-              selection: nil
-            )
-          ]
+        fragments: match_structure(
+          'friend' => match_structure(
+            type_name: 'Friend',
+            selection: [
+              match_structure(name: 'name')
+            ]
+          ),
+          'comparisonFields' => match_structure(
+            type_name: 'Character',
+            selection: [
+              match_structure(name: 'name'),
+              match_structure(name: 'appearsIn'),
+              match_structure(
+                name: 'friends',
+                selection: [
+                  match_structure(class: Graphlyte::Syntax::FragmentSpread, name: 'friend')
+                ]
+              )
+            ]
+          )
         )
-      ]
-    )
-
-    expect(q).to eq expected
+      )
+    end
   end
 
   def parser(gql, klass: described_class)

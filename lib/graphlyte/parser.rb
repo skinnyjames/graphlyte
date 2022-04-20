@@ -2,6 +2,7 @@
 
 require_relative './errors'
 require_relative './syntax'
+require_relative './document'
 
 module Graphlyte
   class Parser
@@ -41,11 +42,9 @@ module Graphlyte
     end
 
     def document
-      doc = Graphlyte::Syntax::Document.new
+      doc = Graphlyte::Document.new(some { definition })
 
-      until index >= @tokens.length
-        doc << definition
-      end
+      expect(:EOF)
 
       doc
     end
@@ -66,11 +65,10 @@ module Graphlyte
       case t.type
       when :PUNCTATOR
         op.type = :query
+        @index -= 1
         op.selection = selection_set
       when :NAME
         try_parse do
-          d = @current_depth
-          @current_depth += 1
           op.type = t.value.to_sym
           op.name = optional { parse_name }
           op.variables = optional { variable_definitions }
@@ -86,7 +84,7 @@ module Graphlyte
 
     def selection_set
       bracket('{', '}') do
-        some { one_of(:fragment_spread, :inline_fragment, :field_selection) }
+        some { one_of(:inline_fragment, :fragment_spread, :field_selection) }
       end
     end
 
@@ -115,15 +113,17 @@ module Graphlyte
     end
 
     def expect(type, value = nil)
-      t = next_token
+      try_parse do
+        t = next_token
 
-      if value
-        raise Expected.new(t, expected: value) unless t.type == type && t.value == value
-      else
-        raise Unexpected, t unless t.type == type
+        if value
+          raise Expected.new(t, expected: value) unless t.type == type && t.value == value
+        else
+          raise Unexpected, t unless t.type == type
+        end
+
+        t.value
       end
-
-      t.value
     end
 
     def field_selection
@@ -315,7 +315,7 @@ module Graphlyte
     end
 
     def type_definition
-      # TODO
+      raise ParseError, "TODO: #{current.location}"
     end
 
     def one_of(*alternatives)

@@ -1,0 +1,5 @@
+mutation {
+  result: makeFoo(a: "foo", input: { x: 1, y: FOO, z: { foo: true, bar: null } }) {
+    foo { id }
+  }
+}

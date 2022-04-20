@@ -4,6 +4,18 @@ require_relative './errors'
 
 module Graphlyte
   module Syntax
+    module StructuralEquality
+      def hash
+        state.hash
+      end
+
+      def eql?(other)
+        other.class == self.class && state == other.state
+      end
+
+      alias_method :==, :eql?
+    end
+
     class Operation
       attr_reader :type
       attr_accessor :name, :variables, :directives, :selection
@@ -49,7 +61,9 @@ module Graphlyte
     Argument = Struct.new(:name, :value)
     Directive = Struct.new(:name, :arguments)
 
-    FragmentSpread = Struct.new(:directives, :name) do
+    module HasFragmentName
+      attr_reader :name
+
       def name=(value)
         raise IllegalValue, 'Not a legal fragment name' if value == 'on'
 
@@ -57,17 +71,27 @@ module Graphlyte
       end
     end
 
+    class FragmentSpread
+      include HasFragmentName
+      include StructuralEquality
+
+      attr_accessor :directives
+
+      def state
+        [name, directives]
+      end
+    end
+
     InlineFragment = Struct.new(:type_name, :directives, :selection)
 
-    Fragment = Struct.new(:name, :type_name, :directives, :selection) do
+    class Fragment
+      include StructuralEquality
+      include HasFragmentName
+
+      attr_accessor :type_name, :directives, :selection
+
       def executable?
         true
-      end
-
-      def name=(value)
-        raise IllegalValue, 'Not a legal fragment name' if value == 'on'
-
-        @name = value
       end
     end
 
@@ -113,7 +137,7 @@ module Graphlyte
     class NumericLiteral
       attr_reader :integer_part, :fractional_part, :exponent_part, :negated
 
-      def initialize(integer_part, fractional_part, exponent_part, negated)
+      def initialize(integer_part, fractional_part = nil, exponent_part = nil, negated = false)
         @integer_part = integer_part
         @fractional_part = fractional_part
         @exponent_part = exponent_part

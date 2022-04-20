@@ -1,0 +1,20 @@
+{
+  antagonists: hero(episode: EMPIRE) {
+    ...comparisonFields
+  }
+  protagonists: hero(episode: JEDI) {
+    ...comparisonFields
+  }
+}
+
+fragment comparisonFields on Character {
+  name
+  appearsIn
+  friends {
+    ...friend
+  }
+}
+
+fragment friend on Friend {
+  name
+}

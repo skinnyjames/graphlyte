@@ -127,7 +127,7 @@ module Graphlyte
         tokens << token if token
       end
 
-      tokens << Token.new(:eof, nil, after_source_end_location)
+      tokens << Token.new(:EOF, nil, after_source_end_location)
     end
 
     private
