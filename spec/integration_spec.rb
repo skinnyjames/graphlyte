@@ -1,5 +1,6 @@
 require "json"
-describe Graphlyte do 
+
+describe Graphlyte, :requests do 
   it "should perform a basic query" do 
     query = Graphlyte.query do |q|
       q.allTodos do |t|
@@ -58,7 +59,7 @@ describe Graphlyte do
           ...todoFields
          }
       }
-  
+
       fragment extraFields on Todo {
         id
         status

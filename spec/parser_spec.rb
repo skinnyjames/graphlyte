@@ -227,7 +227,7 @@ describe Graphlyte::Parser do
         directives: [],
         selection: [
           Graphlyte::Syntax::Field.new(
-            alias: 'result',
+            as: 'result',
             name: 'makeFoo',
             arguments: [
               Graphlyte::Syntax::Argument.new('a', 'foo'),
@@ -243,13 +243,13 @@ describe Graphlyte::Parser do
             directives: [],
             selection: [
               Graphlyte::Syntax::Field.new(
-                alias: nil,
+                as: nil,
                 name: 'foo',
                 arguments: nil,
                 directives: [],
                 selection: [
                   Graphlyte::Syntax::Field.new(
-                    alias: nil,
+                    as: nil,
                     name: 'id',
                     arguments: nil,
                     directives: [],
@@ -282,13 +282,13 @@ describe Graphlyte::Parser do
         directives: [],
         selection: [
           Graphlyte::Syntax::Field.new(
-            alias: nil,
+            as: nil,
             name: 'currentUser',
             arguments: nil,
             directives: [Graphlyte::Syntax::Directive.new('client', nil)],
             selection: [
               Graphlyte::Syntax::Field.new(
-                alias: nil,
+                as: nil,
                 name: 'name',
                 arguments: [
                   Graphlyte::Syntax::Argument.new('format', Graphlyte::Syntax::EnumValue.new('LONG'))
@@ -297,7 +297,7 @@ describe Graphlyte::Parser do
                 selection: nil
               ),
               Graphlyte::Syntax::Field.new(
-                alias: 'years',
+                as: 'years',
                 name: 'age',
                 arguments: nil,
                 directives: [Graphlyte::Syntax::Directive.new(
@@ -309,7 +309,7 @@ describe Graphlyte::Parser do
             ]
           ),
           Graphlyte::Syntax::Field.new(
-            alias: nil,
+            as: nil,
             name: 'thingy',
             arguments: [
               Graphlyte::Syntax::Argument.new(
@@ -320,7 +320,7 @@ describe Graphlyte::Parser do
             directives: [],
             selection: [
               Graphlyte::Syntax::Field.new(
-                alias: nil,
+                as: nil,
                 name: 'foo',
                 arguments: nil,
                 directives: [],
@@ -346,7 +346,7 @@ describe Graphlyte::Parser do
           nil => match_structure(
             selection: [
               match_structure(
-                alias: 'antagonists',
+                as: 'antagonists',
                 name: 'hero',
                 arguments: [
                   match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: 'EMPIRE'))
@@ -356,7 +356,7 @@ describe Graphlyte::Parser do
                 ]
               ),
               match_structure(
-                alias: 'protagonists',
+                as: 'protagonists',
                 name: 'hero',
                 arguments: [
                   match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: 'JEDI'))

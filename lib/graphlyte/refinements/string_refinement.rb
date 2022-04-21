@@ -1,13 +1,14 @@
 module Graphlyte
   module Refinements
     module StringRefinement
-      refine Symbol do 
-        def to_camel_case
-          to_s.to_camel_case
+      refine Symbol do
+        def camelize
+          to_s.camelize
         end
       end
-      refine String do 
-        def to_camel_case
+
+      refine String do
+        def camelize
           start_of_string = match(/(^_+)/)&.[](0)
           end_of_string = match(/(_+$)/)&.[](0)
 

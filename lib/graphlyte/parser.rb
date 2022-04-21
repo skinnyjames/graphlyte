@@ -129,7 +129,7 @@ module Graphlyte
     def field_selection
       field = Graphlyte::Syntax::Field.new
 
-      field.alias = optional do
+      field.as = optional do
         n = parse_name
         expect(:PUNCTATOR, ':')
 
@@ -162,20 +162,18 @@ module Graphlyte
       t = next_token
 
       case t.type
-      when :STRING
-        t.value
-      when :NUMBER
-        t.value
+      when :STRING, :NUMBER
+        Graphlyte::Syntax::Value.new(t.value, t.type)
       when :NAME
         case t.value
         when 'true'
-          true
+          Graphlyte::Syntax::Value.new(Graphlyte::Syntax::TRUE, :BOOL)
         when 'false'
-          false
+          Graphlyte::Syntax::Value.new(Graphlyte::Syntax::FALSE, :BOOL)
         when 'null'
-          nil
+          Graphlyte::Syntax::Value.new(Graphlyte::Syntax::NULL, :NULL)
         else
-          Graphlyte::Syntax::EnumValue.new(t.value)
+          Graphlyte::Syntax::Value.new(t.value.to_sym, :ENUM)
         end
       when :PUNCTATOR
         case t.value

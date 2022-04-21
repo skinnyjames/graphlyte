@@ -1,0 +1,132 @@
+# frozen_string_literal: true
+
+require_relative './syntax'
+require_relative './refinements/string_refinement'
+
+module Graphlyte
+  class WithField
+    def initialize(field, builder)
+      @field = field
+      @builder = builder
+    end
+
+    def alias(name, &block)
+      @field.as = name
+
+      if block_given?
+        @field.selection += @builder.build(&block)
+      end
+
+      self
+    end
+
+    def method_missing(name, *args, **kwargs, &block)
+      directive = Syntax::Directive.new(name.to_s)
+
+      if kwargs.any?
+        directive.arguments = kwargs.to_a.map do
+          Syntax::Argument.new(name: _1.first.to_s, value: Syntax::Value.from_ruby(_1.last))
+        end
+      end
+
+      if block_given?
+        @field.selection += @builder.build(&block)
+      end
+
+      @field.directives << directive
+
+      self
+    end
+
+    def respond_to_missing
+      true
+    end
+  end
+
+  class SelectionBuilder
+    using Graphlyte::Refinements::StringRefinement
+
+    def self.build(document, &block)
+      new(document).build(&block)
+    end
+
+    def initialize(document)
+      @document = document
+    end
+
+    def build(&block)
+      old = @selection
+      curr = []
+
+      @selection = curr
+      instance_eval(&block)
+      return curr
+    ensure
+      @selection = old
+    end
+
+    def on(type_name, &block)
+      frag = Graphlyte::Syntax::InlineFragment.new
+      frag.type_name = type_name
+      frag.selection = build(&block)
+
+      select frag
+    end
+
+    # Use this method directly to refer to fields that are shadowed by built-in
+    # methods or to include fragments explicitly at a given point.
+    #
+    # Note that the 'select' field name must always be refered to using `select('select')`,
+    # and this method must be used to specify underscored field names
+    def select(selected, *args, as: nil, **kwargs, &block)
+      case selected
+      when Graphlyte::Syntax::Fragment
+        selected.required_fragments.each do |frag|
+          @document.definitions << frag unless @document.fragments[frag.name]
+        end
+        @selection << Graphlyte::Syntax::FragmentSpread.new(selected.name)
+      when Graphlyte::Syntax::InlineFragment, Graphlyte::Syntax::Field
+        @selection << selected
+      else
+        name = selected.to_s
+        field = Syntax::Field.new(name: name, as: as, directives: [], selection: [])
+
+        args.each do |arg|
+          case arg
+          when Symbol
+            field.directives << Syntax::Directive.new(arg.to_s)
+          else
+            field.selection += self.class.build(@document) { select arg }
+          end
+        end
+
+        if kwargs.any?
+          field.arguments = kwargs.to_a.map do
+            Syntax::Argument.new(_1.first.to_s, Syntax::Value.from_ruby(_1.last))
+          end
+        end
+
+        if block_given?
+          field.selection += self.class.build(@document, &block)
+        end
+
+        @selection << field
+
+        WithField.new(field, self)
+      end
+    end
+
+    def method_missing(name, *args, **kwargs, &block)
+      if name.to_s.end_with?('=') && args.length == 1 && args[0].is_a?(WithField)
+        aka = name.to_s.chomp('=')
+        args[0].alias(aka)
+      else
+        select(name.to_s.camelize, *args, **kwargs.transform_keys(&:camelize), &block)
+      end
+    end
+
+    def respond_to_missing
+      true
+    end
+  end
+end

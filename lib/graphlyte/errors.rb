@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Graphlyte
-  IllegalValue = Class.new(StandardError)
+  IllegalValue = Class.new(ArgumentError)
 
   ParseError = Class.new(StandardError)
 
