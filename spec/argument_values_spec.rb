@@ -1,12 +1,14 @@
 describe Graphlyte do 
   it "supports variables" do 
+    bar = Graphlyte.var('Int', 'bar')
     query = Graphlyte.query do
-      arguments(foo: :bar) do
+      arguments(foo: bar) do
         id
-      end 
+      end
     end
-    expect(query.to_s).to eql(<<~STRING)
-    {
+
+    expect(query).to parse_like(<<~STRING)
+    query ($bar: Int) {
       arguments(foo: $bar) {
         id
       }

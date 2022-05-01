@@ -3,22 +3,53 @@
 require "forwardable"
 
 require_relative './syntax'
+require_relative './data'
 require_relative './serializer'
 
 module Graphlyte
-  class Document
+  class Document < Graphlyte::Data
     extend Forwardable
 
-    attr_reader :definitions, :operations, :fragments
+    attr_accessor :definitions, :variables, :schema
 
     def_delegators :@definitions, :length, :empty?
 
-    def initialize(definitions = [])
-      @definitions = definitions
+    def initialize(**kwargs)
+      super
+      @definitions ||= []
+      @variables ||= {}
+      @var_name_counter = @variables.size + 1
     end
+
+    def eql?(other)
+      other.is_a?(self.class) && other.fragments == fragments && other.operations == operations
+    end
+
+    alias_method :==, :eql?
 
     def define(dfn)
       @definitions << dfn
+    end
+
+    def declare(var)
+      if var.name.nil?
+        var.name = "var#{@var_name_counter}"
+        @var_name_counter += 1
+      end
+
+      parser = Graphlyte::Parser.new(tokens: Graphlyte::Lexer.lex(var.type))
+      parsed_type = parser.type_name! if var.type
+      current_def = @variables[var.name]
+
+      if current_def && current_def.type != parsed_type
+        msg = "Cannot re-declare #{var.name} at different types. #{current_def.type} != #{var.type}"
+        raise ArgumentError, msg
+      end
+
+      @variables[var.name] ||= Graphlyte::Syntax::VariableDefinition.new(
+        variable: var.name,
+        type: parsed_type
+      )
     end
 
     def fragments

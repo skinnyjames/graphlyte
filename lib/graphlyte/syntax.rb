@@ -1,41 +1,17 @@
 # frozen_string_literal: true
 
 require_relative './errors'
+require_relative './data'
 
 module Graphlyte
   module Syntax
-    module StructuralEquality
-      def hash
-        state.hash
-      end
-
-      def eql?(other)
-        other.class == self.class && state == other.state
-      end
-
-      alias_method :==, :eql?
-    end
-
-    class Operation
-      include StructuralEquality
-
+    class Operation < Graphlyte::Data
       attr_reader :type
       attr_accessor :name, :variables, :directives, :selection
 
       def initialize(type: nil, **args)
-        args.each do |name, value|
-          send(:"#{name}=", value)
-        end
-        self.type = type
-      end
-
-      def eql?(other)
-        other.is_a?(self.class) &&
-          type == other.type &&
-          name == other.name &&
-          variables == other.variables &&
-          directives == other.directives &&
-          selection == other.selection
+        super(**args)
+        self.type = type if type
       end
 
       def executable?
@@ -52,21 +28,18 @@ module Graphlyte
 
       def type=(value)
         @type = value
-        raise IllegalValue, 'Expected query, mutation or subscription' unless valid_type?
-      end
-
-      private
-
-      def state
-        [type, name, variables, directives, selection]
+        raise IllegalValue, "Illegal value: #{value.inspect}. Expected query, mutation or subscription" unless valid_type?
       end
     end
 
     Argument = Struct.new(:name, :value)
+
     Directive = Struct.new(:name, :arguments)
 
     module HasFragmentName
-      attr_reader :name
+      def self.included(mod)
+        mod.attr_reader :name
+      end
 
       def name=(value)
         raise IllegalValue, 'Not a legal fragment name' if value == 'on'
@@ -75,28 +48,28 @@ module Graphlyte
       end
     end
 
-    Field = Struct.new(:as, :name, :arguments, :directives, :selection, keyword_init: true) do
+    class Field < Graphlyte::Data
+      attr_accessor :as, :name, :arguments, :directives, :selection
+      # type is special: it is not part of the serialized Query, but
+      # inferred from the schema. See: editors/annotate_types.rb
+      attr_accessor :type
+
       def simple?
-        as.nil? && Array(arguments).empty? && Array(directives).empty? && Array(selection).empty?
+        as.nil? && arguments.empty? && Array(directives).empty? && Array(selection).empty?
+      end
+
+      def arguments
+        @arguments ||= []
       end
     end
 
-    class FragmentSpread
+    class FragmentSpread < Graphlyte::Data
       include HasFragmentName
-      include StructuralEquality
-
-      def initialize(name = nil)
-        @name = name
-      end
-
-      def simple?
-        false
-      end
 
       attr_accessor :directives
 
-      def state
-        [name, directives]
+      def simple?
+        false
       end
     end
 
@@ -106,14 +79,18 @@ module Graphlyte
       end
     end
 
-    class Fragment
-      include StructuralEquality
+    class Fragment < Graphlyte::Data
       include HasFragmentName
 
       attr_accessor :type_name, :directives, :selection
 
-      def initialize
+      def initialize(**kwargs)
+        super
         @refers_to = []
+      end
+
+      def inline
+        InlineFragment.new(type_name, directives, selection)
       end
 
       def refers_to(fragment)
@@ -129,6 +106,7 @@ module Graphlyte
       end
     end
 
+    # TODO: unify with Schema?
     class TypeSystemDefinition
       def executable?
         false
@@ -142,15 +120,13 @@ module Graphlyte
 
     VariableDefinition = Struct.new(:variable, :type, :default_value, :directives, keyword_init: true)
 
-    VariableReference = Struct.new(:name) do
+    VariableReference = Struct.new(:variable, :inferred_type) do
       def serialize
-        name
+        "$#{variable}"
       end
     end
 
-    class Type
-      include StructuralEquality
-
+    class Type < Graphlyte::Data
       attr_accessor :inner, :is_list, :non_null
 
       def initialize(name = nil)
@@ -167,21 +143,62 @@ module Graphlyte
         str
       end
 
-      private
+      def unpack
+        return inner if inner.is_a?(String)
 
-      def state
-        [inner, is_list, non_null]
+        inner.unpack
+      end
+
+      def self.from_type_ref(type_ref)
+        raise ArgumentError, 'type_ref cannot be nil' if type_ref.nil?
+
+        type = new
+        inner = from_type_ref(type_ref.of_type) if type_ref.of_type
+
+        case type_ref.kind
+        when :NON_NULL
+          raise ArgumentError, "#{type_ref.kind} must have inner type" unless inner
+          type.non_null = true
+          if inner.is_list
+            type.is_list = true
+            type.inner = inner.inner
+          else
+            type.inner = inner
+          end
+        when :LIST
+          raise ArgumentError, "#{type_ref.kind} must have inner type" unless inner
+          type.is_list = true
+          type.inner = inner
+        when :SCALAR, :OBJECT, :ENUM
+          raise ArgumentError, "#{type_ref.kind} cannot have inner type" if inner
+          type.inner = type_ref.name
+        else
+          raise ArgumentError, "Unexpected kind: #{type_ref.kind.inspect}"
+        end
+
+        type
       end
     end
 
-    class Value
-      include StructuralEquality
-
+    class Value < Graphlyte::Data
       attr_reader :value, :type
 
       def initialize(value, type = value.type)
         @value = value
         @type = type
+      end
+
+      def self.from_name(name)
+        case name
+        when 'true'
+          new(TRUE, :BOOL)
+        when 'false'
+          new(FALSE, :BOOL)
+        when 'null'
+          new(NULL, :NULL)
+        else
+          new(name.to_sym, :ENUM)
+        end
       end
 
       def serialize
@@ -205,7 +222,7 @@ module Graphlyte
         when Symbol
           Value.new(object, :ENUM)
         when Integer, Float
-          Value.new(RubyNumber.new(object), :NUMBER)
+          Value.new(object, :NUMBER)
         when TrueClass
           Value.new(TRUE)
         when FalseClass
@@ -216,15 +233,9 @@ module Graphlyte
           raise IllegalValue, object
         end
       end
-
-      private def state
-        [@value, @type]
-      end
     end
 
-    class NumericLiteral
-      include StructuralEquality
-
+    class NumericLiteral < Graphlyte::Data
       attr_reader :integer_part, :fractional_part, :exponent_part, :negated
 
       def initialize(integer_part, fractional_part = nil, exponent_part = nil, negated = false)
@@ -252,24 +263,6 @@ module Graphlyte
         n = integer_part.to_i
 
         negated ? -n : n
-      end
-
-      private def state
-        to_s
-      end
-    end
-
-    class RubyNumber < NumericLiteral
-      def initialize(number)
-        @number = number
-      end
-
-      def to_s
-        @number.to_s
-      end
-
-      def to_i
-        @number.to_i
       end
     end
   end

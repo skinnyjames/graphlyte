@@ -1,68 +1,44 @@
+# frozen_string_literal: true
+
+require 'forwardable'
 require 'json'
+require 'rest-client'
 
-require_relative "./graphlyte/schema_query"
-
-require_relative "./graphlyte/parser"
-require_relative "./graphlyte/lexer"
 require_relative "./graphlyte/syntax"
+require_relative "./graphlyte/schema"
+require_relative "./graphlyte/lexer"
+require_relative "./graphlyte/parser"
+require_relative "./graphlyte/editor"
 require_relative "./graphlyte/serializer"
 require_relative "./graphlyte/selection_builder"
+require_relative "./graphlyte/dsl"
+require_relative "./graphlyte/schema_query"
 
 module Graphlyte
   extend SchemaQuery
+  extend SingleForwardable
+
+  NO_SCHEMA_DSL = Graphlyte::DSL.new
+
+  def_delegators 'Graphlyte::NO_SCHEMA_DSL', :query, :mutation, :var, :fragment
 
   def self.parse(gql)
     ts = Graphlyte::Lexer.lex(gql)
     parser = Graphlyte::Parser.new(tokens: ts)
 
-    parser.document
+    parser.query
   end
 
-  def self.query(name = nil, doc = Document.new, &block)
-    op = Syntax::Operation.new(type: :query)
-    doc.define(op)
-
-    op.name = name
-    op.selection = SelectionBuilder.build(doc, &block)
-
-    # TODO: infer operation signatures (requires schema!)
-    doc
+  def self.dsl(uri, headers = {})
+    DSL.new(request_schema(uri, headers))
   end
 
-  def self.mutation(name = nil, doc = Document.new, &block)
-    op = Syntax::Operation.new(type: :mutation)
-    doc.define(op)
+  def self.request_schema(uri, headers = {})
+    body = { query: schema_query.to_s }.to_json
+    headers = { content_type: :json, accept: :json }.merge(headers)
 
-    op.name = name
-    op.selection = SelectionBuilder.build(doc, &block)
+    resp = RestClient.post(uri, body, headers)
 
-    # TODO: infer operation signatures (requires schema!)
-    doc
-  end
-
-  def self.fragment(fragment_name = nil, doc = Document.new, on:, &block)
-    frag = Graphlyte::Syntax::Fragment.new
-
-    frag.type_name = on
-    frag.selection = SelectionBuilder.build(doc, &block)
-
-    if fragment_name
-      frag.name = fragment_name
-    else
-      base = "#{on}Fields"
-      n = 1
-      frag.name = base
-
-      while doc.fragments[frag.name]
-        frag.name = "#{base}_#{n}"
-        n += 1
-      end
-    end
-
-    doc.fragments.each_value do |required|
-      frag.refers_to required
-    end
-
-    frag
+    Schema.from_schema_response(JSON.parse(resp.body))
   end
 end

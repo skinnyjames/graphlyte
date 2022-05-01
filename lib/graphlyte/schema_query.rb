@@ -1,8 +1,13 @@
+# frozen_string_literal: true
+
+require_relative "./dsl"
 
 module Graphlyte
   module SchemaQuery
     def schema_query
-      type_ref_fragment = Graphlyte.fragment(on: '__Type') do
+      dsl = DSL.new
+
+      type_ref_fragment = dsl.fragment(on: '__Type') do
         kind
         name
         of_type { 
@@ -35,14 +40,14 @@ module Graphlyte
         }
       end
 
-      input_value_fragment = Graphlyte.fragment(on: '__InputValue') do
+      input_value_fragment = dsl.fragment(on: '__InputValue') do
         name
         description
         type type_ref_fragment
         default_value
       end
 
-      full_type_fragment = Graphlyte.fragment(on: '__Type') do
+      full_type_fragment = dsl.fragment(on: '__Type') do
         kind
         name
         description
@@ -65,7 +70,7 @@ module Graphlyte
         possible_types type_ref_fragment
       end
 
-      Graphlyte.query do
+      dsl.query do
         __schema do
           query_type { name }
           mutation_type { name }

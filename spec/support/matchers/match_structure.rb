@@ -26,8 +26,6 @@ RSpec::Matchers.define :match_structure do |structure|
   failure_message do |actual|
     lines = ["#{actual.class}:"]
 
-    binding.pry unless @failed_keys
-
     @failed_keys.each do |key|
       expectation = @structure[key]
       value = subvalue(key, actual)

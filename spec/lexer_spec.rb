@@ -54,7 +54,7 @@ describe Graphlyte::Lexer do
       [:PUNCTATOR, '('],
       [:PUNCTATOR, ')'],
       [:PUNCTATOR, '@'],
-      [:eof, nil]
+      [:EOF, nil]
     ]
 
     expect(tokens).to eql(expected_tokens)
@@ -83,7 +83,7 @@ describe Graphlyte::Lexer do
       [:NUMBER, '123'],
       [:STRING, str],
       [:NUMBER, '456'],
-      [:eof, nil]
+      [:EOF, nil]
     ]
 
     expect(tokens).to eql(expected_tokens)
@@ -143,7 +143,7 @@ describe Graphlyte::Lexer do
       [:NAME, "field3"],
       [:PUNCTATOR, "}"],
       [:PUNCTATOR, "}"],
-      [:eof, nil]
+      [:EOF, nil]
     ]
 
     expect(tokens).to eql(expected_tokens)

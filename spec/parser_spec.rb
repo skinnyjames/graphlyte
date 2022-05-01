@@ -74,7 +74,7 @@ describe Graphlyte::Parser do
 
       expect([x, y]).to eq %i[beta gamma]
 
-      expect { p.one_of(:b, :c) }.to raise_error(Graphlyte::Expected)
+      expect { p.one_of(:b, :c) }.to raise_error(Graphlyte::ParseError, /Expected one of b, c/)
     end
   end
 
@@ -148,26 +148,32 @@ describe Graphlyte::Parser do
       values = p.some { p.parse_value }
 
       expect(values).to eq [
-        Graphlyte::Syntax::VariableReference.new('ref'),
-        Graphlyte::Syntax::VariableReference.new('raf'),
-        Graphlyte::Syntax::NumericLiteral.new('1', nil, nil, false),
-        Graphlyte::Syntax::NumericLiteral.new('1', '2', nil, false),
-        'some string',
-        Graphlyte::Syntax::EnumValue.new('ENUM_VALUE'),
-        true,
-        false,
-        nil,
+        var('ref'),
+        var('raf'),
+        int('1'),
+        Graphlyte::Syntax::Value.new(
+          Graphlyte::Syntax::NumericLiteral.new('1', '2', nil, false),
+          :NUMBER
+        ),
+        string('some string'),
+        enum(:ENUM_VALUE),
+        true_value,
+        false_value,
+        null_value,
         [
-          Graphlyte::Syntax::NumericLiteral.new('0', nil, nil, false),
-          Graphlyte::Syntax::NumericLiteral.new('1', nil, nil, false),
-          'foo',
-          Graphlyte::Syntax::EnumValue.new('foo'),
-          [true, false]
+          int('0'),
+          int('1'),
+          string('foo'),
+          enum(:foo),
+          [
+            true_value,
+            false_value
+          ]
         ],
         {
-          'a' => Graphlyte::Syntax::NumericLiteral.new('0', nil, nil, false),
-          'b' => Graphlyte::Syntax::NumericLiteral.new('1', nil, nil, false),
-          'c' => Graphlyte::Syntax::NumericLiteral.new('2', nil, nil, false)
+          'a' => int('0'),
+          'b' => int('1'),
+          'c' => int('2')
         }
       ]
     end
@@ -230,13 +236,13 @@ describe Graphlyte::Parser do
             as: 'result',
             name: 'makeFoo',
             arguments: [
-              Graphlyte::Syntax::Argument.new('a', 'foo'),
+              Graphlyte::Syntax::Argument.new('a', string('foo')),
               Graphlyte::Syntax::Argument.new('input', {
-                'x' => Graphlyte::Syntax::NumericLiteral.new('1'),
-                'y' => Graphlyte::Syntax::EnumValue.new('FOO'),
+                'x' => int('1'),
+                'y' => enum(:FOO),
                 'z' => {
-                  'foo' => true,
-                  'bar' => nil
+                  'foo' => true_value,
+                  'bar' => null_value
                 }
               })
             ],
@@ -275,7 +281,7 @@ describe Graphlyte::Parser do
           Graphlyte::Syntax::VariableDefinition.new(
             variable: 'x',
             type: Graphlyte::Syntax::Type.new('Int'),
-            default_value: Graphlyte::Syntax::NumericLiteral.new('10', nil, nil, false),
+            default_value: int('10'),
             directives: []
           )
         ],
@@ -291,7 +297,7 @@ describe Graphlyte::Parser do
                 as: nil,
                 name: 'name',
                 arguments: [
-                  Graphlyte::Syntax::Argument.new('format', Graphlyte::Syntax::EnumValue.new('LONG'))
+                  Graphlyte::Syntax::Argument.new('format', enum(:LONG))
                 ],
                 directives: [],
                 selection: nil
@@ -302,7 +308,7 @@ describe Graphlyte::Parser do
                 arguments: nil,
                 directives: [Graphlyte::Syntax::Directive.new(
                   'show',
-                  [Graphlyte::Syntax::Argument.new("if", true)]
+                  [Graphlyte::Syntax::Argument.new("if", true_value)]
                 )],
                 selection: nil
               )
@@ -349,7 +355,7 @@ describe Graphlyte::Parser do
                 as: 'antagonists',
                 name: 'hero',
                 arguments: [
-                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: 'EMPIRE'))
+                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: :EMPIRE))
                 ],
                 selection: [
                   match_structure(class: Graphlyte::Syntax::FragmentSpread, name: 'comparisonFields')
@@ -359,7 +365,7 @@ describe Graphlyte::Parser do
                 as: 'protagonists',
                 name: 'hero',
                 arguments: [
-                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: 'JEDI'))
+                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: :JEDI))
                 ],
                 selection: [
                   match_structure(class: Graphlyte::Syntax::FragmentSpread, name: 'comparisonFields')
@@ -396,5 +402,36 @@ describe Graphlyte::Parser do
   def parser(gql, klass: described_class)
     ts = Graphlyte::Lexer.lex(gql)
     klass.new(tokens: ts)
+  end
+
+  def var(str)
+    Graphlyte::Syntax::VariableReference.new(str)
+  end
+
+  def int(str)
+    Graphlyte::Syntax::Value.new(
+      Graphlyte::Syntax::NumericLiteral.new(str, nil, nil, false),
+      :NUMBER
+    )
+  end
+
+  def string(str)
+    Graphlyte::Syntax::Value.new(str, :STRING)
+  end
+
+  def enum(sym)
+    Graphlyte::Syntax::Value.new(sym, :ENUM)
+  end
+
+  let(:true_value) do
+    Graphlyte::Syntax::Value.new(Graphlyte::Syntax::TRUE, :BOOL)
+  end
+
+  let(:false_value) do
+    Graphlyte::Syntax::Value.new(Graphlyte::Syntax::FALSE, :BOOL)
+  end
+
+  let(:null_value) do
+    Graphlyte::Syntax::Value.new(Graphlyte::Syntax::NULL, :NULL)
   end
 end

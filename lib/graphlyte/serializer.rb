@@ -53,7 +53,6 @@ module Graphlyte
 
       buff << SPACE << '{'
 
-      binding.pry
       if selection.length < max_fields_per_line && selection.all?(&:simple?) && (selection.sum { _1.name.length } + selection.length  + indent) < line_length
         buff << SPACE
         selection.each do |field|
@@ -162,10 +161,10 @@ module Graphlyte
       buff << '('
       variable_definitions.each_with_index do |var, i|
         buff << ', ' * [i, 1].min
-        buff << "$#{var.name}: "
+        buff << "$#{var.variable}: "
         buff << var.type.to_s
         buff << ' = ' if var.default_value
-        dump_value(var.default_value)
+        dump_value(var.default_value) if var.default_value
         dump_directives(var.directives)
       end
       buff << ')'

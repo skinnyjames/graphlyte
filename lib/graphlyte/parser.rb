@@ -42,7 +42,18 @@ module Graphlyte
     end
 
     def document
-      doc = Graphlyte::Document.new(some { definition })
+      doc = Graphlyte::Document.new
+      doc.definitions = some { definition }
+
+      expect(:EOF)
+
+      doc
+    end
+
+    # Restricted parser: only parses executable definitions
+    def query
+      doc = Graphlyte::Document.new
+      doc.definitions = some { executable_definition }
 
       expect(:EOF)
 
@@ -54,7 +65,7 @@ module Graphlyte
     end
 
     def executable_definition
-      one_of(:operation, :fragment)
+      one_of(:fragment, :operation)
     end
 
     def operation
@@ -165,16 +176,7 @@ module Graphlyte
       when :STRING, :NUMBER
         Graphlyte::Syntax::Value.new(t.value, t.type)
       when :NAME
-        case t.value
-        when 'true'
-          Graphlyte::Syntax::Value.new(Graphlyte::Syntax::TRUE, :BOOL)
-        when 'false'
-          Graphlyte::Syntax::Value.new(Graphlyte::Syntax::FALSE, :BOOL)
-        when 'null'
-          Graphlyte::Syntax::Value.new(Graphlyte::Syntax::NULL, :NULL)
-        else
-          Graphlyte::Syntax::Value.new(t.value.to_sym, :ENUM)
-        end
+        Graphlyte::Syntax::Value.from_name(t.value)
       when :PUNCTATOR
         case t.value
         when '$'
@@ -243,7 +245,7 @@ module Graphlyte
           expect(:PUNCTATOR, ':')
           var.type = type_name
 
-          var.default_value = default_value
+          var.default_value = optional { default_value }
           var.directives = directives
 
           var
@@ -269,6 +271,13 @@ module Graphlyte
       t = peek(offset: 1)
       ty.non_null = t.punctator?('!')
       advance if ty.non_null
+
+      ty
+    end
+
+    def type_name!
+      ty = type_name
+      expect(:EOF)
 
       ty
     end
@@ -318,6 +327,7 @@ module Graphlyte
 
     def one_of(*alternatives)
       err = nil
+      all_symbols = alternatives.all? { _1.is_a?(Symbol) }
 
       alternatives.each do |alt|
         begin
@@ -334,6 +344,7 @@ module Graphlyte
         end
       end
 
+      raise ParseError, "At #{current.location}: Expected one of #{alternatives.join(', ')}" if err && all_symbols
       raise err if err
     end
 

@@ -46,6 +46,9 @@ module Graphlyte
   class SelectionBuilder
     using Graphlyte::Refinements::StringRefinement
 
+    # Variables should not be re-used between queries
+    Variable = Struct.new(:type, :name, keyword_init: true)
+
     def self.build(document, &block)
       new(document).build(&block)
     end
@@ -84,7 +87,7 @@ module Graphlyte
         selected.required_fragments.each do |frag|
           @document.definitions << frag unless @document.fragments[frag.name]
         end
-        @selection << Graphlyte::Syntax::FragmentSpread.new(selected.name)
+        @selection << Graphlyte::Syntax::FragmentSpread.new(name: selected.name)
       when Graphlyte::Syntax::InlineFragment, Graphlyte::Syntax::Field
         @selection << selected
       else
@@ -101,8 +104,15 @@ module Graphlyte
         end
 
         if kwargs.any?
-          field.arguments = kwargs.to_a.map do
-            Syntax::Argument.new(_1.first.to_s, Syntax::Value.from_ruby(_1.last))
+          field.arguments = kwargs.to_a.map do |(k, v)|
+            value = if v.is_a?(Variable)
+                      @document.declare(v)
+                      Syntax::VariableReference.new(v.name)
+                    else
+                      Syntax::Value.from_ruby(v)
+                    end
+
+            Syntax::Argument.new(k.to_s, value)
           end
         end
 
