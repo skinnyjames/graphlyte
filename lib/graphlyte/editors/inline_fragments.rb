@@ -17,7 +17,6 @@ module Graphlyte
 
       def inliner
         @inliner ||= Editor.new.on_fragment_spread do |spread, action|
-          binding.pry unless spread.name.is_a?(String)
           fragment = action.document.fragments[spread.name]
           raise FragmentNotFound, spread.name unless fragment
 

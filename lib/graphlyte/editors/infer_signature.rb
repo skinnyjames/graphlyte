@@ -20,7 +20,7 @@ module Graphlyte
         references = Editors::CollectVariableReferences.new.edit(doc)
 
         editor = Editor.new.on_operation do |operation, action|
-          refs = references[operation]
+          refs = references[operation.class][operation.name]
           next unless refs
 
           operation.variables ||= []
@@ -44,18 +44,15 @@ module Graphlyte
         end
 
         var = doc.variables[ref.variable]
-
-        if var && !var.type
-          var.type = ref.inferred_type
-        elsif !var
-          var = Syntax::VariableDefinition.new(variable: ref.variable, type: ref.inferred_type)
-        end
+        var ||= Syntax::VariableDefinition.new(variable: ref.variable, type: ref.inferred_type)
+        var.type ||= ref.inferred_type
 
         # We should *always* be able to infer if there is a schema
         # But if we are in dynamic mode, defer inferrence errors until
         # we have runtime values (see `WithVariables`)
         # TODO: combine this class with `WithVariables` - they share a lot of code!
         raise CannotInfer, ref.variable if @schema && !var.type
+        return unless var.type
 
         variables << var
         added[ref.variable] = var

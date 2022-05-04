@@ -217,13 +217,49 @@ module Graphlyte
         end
       end
 
+      def inspect
+        "#<#{self.class.name} @type=#{type} @value=#{value.inspect}>"
+      end
+      alias_method :to_s, :inspect
+
+
+      def eql?(other)
+        return true if super
+        return true if numeric_eql?(other)
+
+        false
+      end
+
+      def numeric_eql?(other)
+        return false if !number?
+        return false if !other&.number?
+
+        if floating? || other.floating?
+          value.to_f == other.value.to_f
+        else
+          value.to_i == other.value.to_i
+        end
+      end
+
+      def floating?
+        return false if !number?
+        return true if value.is_a?(Float)
+        return true if value.is_a?(NumericLiteral) && value.floating?
+
+        false
+      end
+
+      def number?
+        type == :NUMBER
+      end
+
       def serialize
         case value
-        when NumericLiteral, Literal, Symbol
-          value.to_s
         when String
           # TODO: handle block strings?
           '"' + value.gsub(/"/, '\"').gsub("\n", '\n').gsub("\t", '\t') + '"'
+        else
+          value.to_s
         end
       end
 
@@ -279,6 +315,22 @@ module Graphlyte
         n = integer_part.to_i
 
         negated ? -n : n
+      end
+
+      def to_f
+        n = to_i.to_f
+        if fractional_part
+          fp = fractional_part.to_i.to_f * (negated ? -1 : 1)
+          fp = fp / (10 ** (fractional_part.length))
+          n += fp
+        end
+        if exponent_part
+          e = exponent_part.last.to_i
+          e *= exponent_part.first == '-' ? -1 : 1
+          n *= (10 ** e)
+        end
+
+        n
       end
     end
   end

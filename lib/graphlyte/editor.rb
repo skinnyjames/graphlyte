@@ -144,14 +144,16 @@ module Graphlyte
 
       def edit_value(object)
         case object
-        when Hash
-          object.flat_map { edit_value(_1) }
         when Array
-          object.to_a.flat_map do |(k, old_value)|
-            edit_value(old_value).take(1).map do |new_value|
-              [k, new_value]
-            end
-          end.to_h
+          [object.flat_map { edit_value(_1) }]
+        when Hash
+          [
+            object.to_a.flat_map do |(k, old_value)|
+              edit_value(old_value).take(1).map do |new_value|
+                [k, new_value]
+              end
+            end.to_h
+          ]
         else
           edit(object)
         end

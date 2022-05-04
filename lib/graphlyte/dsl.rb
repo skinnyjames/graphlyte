@@ -16,6 +16,10 @@ module Graphlyte
       SelectionBuilder::Variable.new(type: type, name: name)
     end
 
+    def enum(value)
+      Syntax::Value.new(value.to_sym, :ENUM)
+    end
+
     def query(name = nil, doc = Document.new, &block)
       op = Syntax::Operation.new(type: :query)
       doc.define(op)
@@ -23,7 +27,7 @@ module Graphlyte
       op.name = name
       op.selection = SelectionBuilder.build(doc, &block)
 
-      # Editors::InferSignature.new(@schema).edit(doc)
+      Editors::InferSignature.new(@schema).edit(doc)
 
       doc
     end

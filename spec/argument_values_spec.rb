@@ -1,14 +1,32 @@
 describe Graphlyte do 
-  it "supports variables" do 
+  it "supports variables, as variable objects" do 
     bar = Graphlyte.var('Int', 'bar')
+    foo = Graphlyte.var('String', 'foo')
+
     query = Graphlyte.query do
-      arguments(foo: bar) do
+      arguments(foo: bar, bar: foo) do
         id
       end
     end
 
-    expect(query).to parse_like(<<~STRING)
-    query ($bar: Int) {
+    expect(query).to produce_equivalent_document(<<~STRING)
+    query ($foo: String, $bar: Int) {
+      arguments(foo: $bar, bar: $foo) {
+        id
+      }
+    }
+    STRING
+  end
+
+  it "supports variables, using symbols" do 
+    query = Graphlyte.query do
+      arguments(foo: :bar) do
+        id
+      end
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+    query {
       arguments(foo: $bar) {
         id
       }
@@ -22,7 +40,7 @@ describe Graphlyte do
         id
       end 
     end
-    expect(query.to_s).to eql(<<~STRING)
+    expect(query).to produce_equivalent_document(<<~STRING)
     {
       arguments(int: 1) {
         id
@@ -35,9 +53,10 @@ describe Graphlyte do
     query = Graphlyte.query do |q|
       q.arguments(float: 1.01) do |i|
         i.id
-      end 
+      end
     end
-    expect(query.to_s).to eql(<<~STRING)
+
+    expect(query).to produce_equivalent_document(<<~STRING)
     {
       arguments(float: 1.01) {
         id
@@ -46,62 +65,83 @@ describe Graphlyte do
     STRING
   end
 
-  it "should support strings" do 
+  it "should support exponentiation" do 
     query = Graphlyte.query do |q|
-      q.arguments(string: "hello") do |i|
+      q.arguments(big: 1_000_000) do |i|
         i.id
-      end 
+      end
     end
-    expect(query.to_s).to eql(<<~STRING)
+
+    expect(query).to produce_equivalent_document(<<~STRING)
     {
-      arguments(string: "hello") {
+      arguments(big: 1e6) {
         id
       }
+    }
+    STRING
+  end
+
+  it "should support exponentiation, negative" do 
+    query = Graphlyte.query do |q|
+      q.arguments(small: 0.000001) do |i|
+        i.id
+      end
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+    {
+      arguments(small: 1e-6) {
+        id
+      }
+    }
+    STRING
+  end
+
+  it "should support strings" do 
+    query = Graphlyte.query do |q|
+      q.arguments(string: "hello")
+    end
+    expect(query).to produce_equivalent_document(<<~STRING)
+    {
+      arguments(string: "hello")
     }
     STRING
   end
 
   it "should support lists" do 
     query = Graphlyte.query do |q|
-      q.arguments(list: [1, 2, "string"]) do |i|
-        i.id
-      end 
+      q.arguments(list: [1, 2])
     end
-    expect(query.to_s).to eql(<<~STRING)
+
+    expect(query).to produce_equivalent_document(<<~STRING)
     {
-      arguments(list: [1, 2, "string"]) {
-        id
-      }
+      arguments(list: [1, 2])
     }
     STRING
   end
 
   it "should support hashes" do 
-    query = Graphlyte.query do |q|
-      q.arguments(object: { one: 2, three: [1, 2] }) do |i|
-        i.id
-      end 
+    query = Graphlyte.query do
+      arguments(object: { one: 2, three: [1, 2] })
     end
-    expect(query.to_s).to eql(<<~STRING)
+
+    expect(query).to produce_equivalent_document(<<~STRING)
     {
-      arguments(object: { one: 2, three: [1, 2] }) {
-        id
-      }
+      arguments(object: { one: 2, three: [1, 2] })
     }
     STRING
   end
 
   it "should handle booleans" do 
-    query = Graphlyte.query do |q|
-      q.arguments(boolean: true) do |i|
-        i.id
-      end 
+    query = Graphlyte.query do
+      foo(boolean: true)
+      bar(boolean: false)
     end
-    expect(query.to_s).to eql(<<~STRING)
+
+    expect(query).to produce_equivalent_document(<<~STRING)
     {
-      arguments(boolean: true) {
-        id
-      }
+      foo(boolean: true)
+      bar(boolean: false)
     }
     STRING
   end

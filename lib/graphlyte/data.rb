@@ -29,7 +29,10 @@ module Graphlyte
     def eql?(other)
       other.is_a?(self.class) && state == other.send(:state)
     end
-    alias_method :==, :eql?
+
+    def ==(other)
+      eql?(other)
+    end
 
     def hash
       state.hash

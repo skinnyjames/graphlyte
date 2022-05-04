@@ -105,8 +105,11 @@ module Graphlyte
 
         if kwargs.any?
           field.arguments = kwargs.to_a.map do |(k, v)|
-            value = if v.is_a?(Variable)
-                      @document.declare(v)
+            value = case v
+                    when Syntax::Value
+                      v # built via Graphlyte.enum for example
+                    when Variable, Symbol
+                      @document.declare(v) if v.is_a?(Variable)
                       Syntax::VariableReference.new(v.name)
                     else
                       Syntax::Value.from_ruby(v)
