@@ -265,6 +265,8 @@ module Graphlyte
       document.definitions = document.definitions.flat_map do |object|
         c.edit_definition(object)
       end
+
+      document
     end
   end
 end

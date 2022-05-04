@@ -10,11 +10,12 @@ module Graphlyte
     class CollectVariableReferences
       def edit(doc)
         doc = doc.dup
-        references = {}
+        references = { Syntax::Operation => {}, Syntax::Fragment => {} }
 
         collector = Editor.new.on_variable_reference do |ref, action|
-          references[action.definition] ||= [].to_set
-          references[action.definition] << ref
+          d = action.definition
+          references[d.class][d.name] ||= [].to_set
+          references[d.class][d.name] << ref
         end
 
         InlineFragments.new.edit(doc)

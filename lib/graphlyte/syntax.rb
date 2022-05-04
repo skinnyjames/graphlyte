@@ -135,6 +135,22 @@ module Graphlyte
         @non_null = false
       end
 
+      # Used during value->type inference
+      def self.non_null(inner)
+        t = new(inner)
+        t.non_null = true
+        t
+      end
+
+      # Used during value->type inference
+      # always non-null, because we have a value.
+      def self.list_of(inner)
+        t = new(inner)
+        t.is_list = true
+        t.non_null = true
+        t
+      end
+
       def to_s
         str = inner.to_s
         str = "[#{str}]" if is_list

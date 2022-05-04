@@ -23,7 +23,7 @@ module Graphlyte
       op.name = name
       op.selection = SelectionBuilder.build(doc, &block)
 
-      Editors::InferSignature.new(@schema).edit(doc)
+      # Editors::InferSignature.new(@schema).edit(doc)
 
       doc
     end

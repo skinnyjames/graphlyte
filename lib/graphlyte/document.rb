@@ -79,5 +79,22 @@ module Graphlyte
     def write(io)
       Graphlyte::Serializer.new(io).dump_definitions(definitions)
     end
+
+    # Return this document as a JSON request body, suitable for posting to a server.
+    def request_body(operation = nil, **variables)
+      if operation.nil? && operations.size != 1
+        raise ArgumentError, 'Operation name is required when the document contains multiple operations'
+      end
+
+      variables.transform_keys!(&:to_s)
+
+      doc = Editors::WithVariables.new(schema, operation, variables).edit(dup)
+
+      {
+        query: doc.to_s,
+        variables: variables,
+        operation: operation
+      }.compact.to_json
+    end
   end
 end
