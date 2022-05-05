@@ -66,7 +66,7 @@ module Graphlyte
       end
 
       def insert_after(node)
-        @new_nodes = @new_nodes + [node]
+        @new_nodes.push(node)
       end
 
       def delete

@@ -2,7 +2,7 @@ describe Graphlyte::Selector do
   context 'manipulating queries' do
     let(:query) do
       Graphlyte.parse(<<~GQL)
-        query name($projectPath: ID!, $commitSha: String) {
+        query ($projectPath: ID!, $commitSha: String) {
           project(fullPath: $projectPath, sha: $commitSha) {
             createdAt
             pipelines(sha: $commitSha) {
@@ -17,17 +17,18 @@ describe Graphlyte::Selector do
     end
 
     it 'adds and removes fields' do
-      query.at('project.pipelines.nodes') do |pipeline|
-        remove :status
-        downstream do
-          nodes do
-            active
+      editor = described_class.new
+        .at('project.pipelines.nodes.status', &:remove)
+        .at('project.pipelines.nodes') do |node|
+          node.append do
+            downstream do
+              nodes { active }
+            end
           end
         end
-      end
 
-      expect(query.to_s).to eql(<<~STRING)
-        {
+      expect(editor.edit(query)).to produce_equivalent_document(<<~STRING)
+        query ($projectPath: ID!, $commitSha: String) {
           project(fullPath: $projectPath, sha: $commitSha) {
             createdAt
             pipelines(sha: $commitSha) {
