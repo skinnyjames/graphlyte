@@ -10,14 +10,15 @@ module Mocks
       log_file = 'log/json-graphql-server.log'
       timeout = 2 # seconds
 
-      File.truncate(log_file, 0)
+      File.truncate(log_file, 0) if File.exist?(log_file)
+
       command = %w[json-graphql-server fixture/mocks.json --p 5000]
 
       @server_pid = spawn(*command, [:err, :out] => [log_file, 'w'])
 
       STDOUT.print 'Waiting for server'
       slept = 0
-      until slept > timeout || File.read(log_file).include?('server running')
+      until slept > timeout || File.exist?(log_file) && File.read(log_file).include?('server running')
         sleep(0.1)
         slept += 0.1
         putc '.'
