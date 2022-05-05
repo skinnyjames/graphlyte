@@ -128,19 +128,32 @@ module Graphlyte
 
     VariableDefinition = Struct.new(:variable, :type, :default_value, :directives, keyword_init: true)
 
-    VariableReference = Struct.new(:variable, :inferred_type) do
+    class VariableReference < Graphlyte::Data
+      attr_accessor :variable, :inferred_type
+
+      def initialize(variable = nil, inferred_type = nil, **kwargs)
+        super(**kwargs)
+        @variable ||= variable
+        @inferred_type ||= inferred_type
+      end
+
       def serialize
         "$#{variable}"
+      end
+
+      private def state
+        @variable
       end
     end
 
     class Type < Graphlyte::Data
       attr_accessor :inner, :is_list, :non_null
 
-      def initialize(name = nil)
-        @inner = name
-        @is_list = false
-        @non_null = false
+      def initialize(name = nil, **kwargs)
+        super(**kwargs)
+        @inner ||= name
+        @is_list ||= false
+        @non_null ||= false
       end
 
       # Used during value->type inference

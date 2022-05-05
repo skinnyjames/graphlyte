@@ -99,6 +99,10 @@ module Graphlyte
       select frag
     end
 
+    def <<(fragment)
+      select(fragment)
+    end
+
     # Use this method directly to refer to fields that are shadowed by built-in
     # methods or to include fragments explicitly at a given point.
     #

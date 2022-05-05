@@ -8,3 +8,5 @@ test.rb
 coverage
 
 .bundle
+nohup.out
+log/*.log

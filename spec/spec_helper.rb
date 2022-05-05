@@ -28,8 +28,5 @@ RSpec.configure do |config|
 
   config.include(Request, :requests)
   config.include(Fixtures, :fixtures)
-
-  config.before(:each) do
-    @fixture = JSON.parse File.read("#{__dir__}/../fixture/mocks.json")
-  end
+  config.include(Mocks, :mocks)
 end

@@ -5,9 +5,11 @@ require "forwardable"
 require_relative './syntax'
 require_relative './data'
 require_relative './serializer'
+require_relative './refinements/string_refinement'
 
 module Graphlyte
   class Document < Graphlyte::Data
+    using Graphlyte::Refinements::StringRefinement
     extend Forwardable
 
     attr_accessor :definitions, :variables, :schema
@@ -63,7 +65,7 @@ module Graphlyte
         type: parsed_type
       )
 
-      Syntax::VariableReference.new(var.name)
+      Syntax::VariableReference.new(var.name, parsed_type)
     end
 
     def fragments
@@ -100,7 +102,7 @@ module Graphlyte
         raise ArgumentError, 'Operation name is required when the document contains multiple operations'
       end
 
-      variables.transform_keys!(&:to_s)
+      variables.transform_keys! { _1.to_s.camelize }
 
       doc = Editors::WithVariables.new(schema, operation, variables).edit(dup)
 

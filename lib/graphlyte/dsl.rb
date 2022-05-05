@@ -2,10 +2,13 @@
 
 require_relative "./syntax"
 require_relative "./selection_builder"
+require_relative './refinements/string_refinement'
 require_relative "./editors/infer_signature"
 
 module Graphlyte
   class DSL
+    using Graphlyte::Refinements::StringRefinement
+
     attr_reader :schema
 
     def initialize(schema = nil)
@@ -13,7 +16,7 @@ module Graphlyte
     end
 
     def var(type = nil, name = nil)
-      SelectionBuilder::Variable.new(type: type, name: name)
+      SelectionBuilder::Variable.new(type: type, name: name&.to_s&.camelize)
     end
 
     def enum(value)

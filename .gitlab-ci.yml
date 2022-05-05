@@ -11,8 +11,6 @@ rspec:
     HOST: 127.0.0.1
   stage: test
   script:
-    - nohup json-graphql-server fixture/mocks.json --p 5000 &
-    - sleep 10
     - bundle exec rspec
   artifacts:
     paths:
