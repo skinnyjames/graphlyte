@@ -157,6 +157,7 @@ module Graphlyte
 
     def dump_signature(variable_definitions)
       return unless variable_definitions
+      return if variable_definitions.empty?
 
       buff << '('
       variable_definitions.each_with_index do |var, i|

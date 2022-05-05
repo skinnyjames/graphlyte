@@ -32,7 +32,15 @@ module Graphlyte
       end
     end
 
-    Argument = Struct.new(:name, :value)
+    class Argument < Graphlyte::Data
+      attr_accessor :name, :value
+
+      def initialize(name = nil, value = nil, **kwargs)
+        super(**kwargs)
+        @name = name if name
+        @value = value if value
+      end
+    end
 
     Directive = Struct.new(:name, :arguments)
 
@@ -197,11 +205,13 @@ module Graphlyte
     end
 
     class Value < Graphlyte::Data
-      attr_reader :value, :type
+      attr_accessor :value, :type
 
-      def initialize(value, type = value.type)
-        @value = value
-        @type = type
+      def initialize(value = nil, type = nil, **kwargs)
+        super(**kwargs)
+        @value = value if value
+        @type = type if type
+        @type ||= value&.type
       end
 
       def self.from_name(name)
@@ -290,11 +300,13 @@ module Graphlyte
     class NumericLiteral < Graphlyte::Data
       attr_reader :integer_part, :fractional_part, :exponent_part, :negated
 
-      def initialize(integer_part, fractional_part = nil, exponent_part = nil, negated = false)
-        @integer_part = integer_part
-        @fractional_part = fractional_part
-        @exponent_part = exponent_part
-        @negated = negated
+      def initialize(integer_part = nil, fractional_part = nil, exponent_part = nil, negated = false, **kwargs)
+        @integer_part = integer_part || kwargs[:integer_part]
+        @fractional_part = fractional_part || kwargs[:fractional_part]
+        @exponent_part = exponent_part || kwargs[:exponent_part]
+        @negated = negated || kwargs[:negated]
+
+        raise ArgumentError, 'integer_part is required' unless @integer_part
       end
 
       def floating?

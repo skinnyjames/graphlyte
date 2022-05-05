@@ -21,6 +21,18 @@ module Graphlyte
       @var_name_counter = @variables.size + 1
     end
 
+    def +(other)
+      return self.dup unless other
+
+      other = other.dup
+      doc = dup
+
+      defs = doc.definitions + other.definitions
+      vars = doc.variables.merge(other.variables) # TODO: detect conflicts?
+
+      self.class.new(definitions: defs, vars: vars)
+    end
+
     def eql?(other)
       other.is_a?(self.class) && other.fragments == fragments && other.operations == operations
     end
@@ -50,6 +62,8 @@ module Graphlyte
         variable: var.name,
         type: parsed_type
       )
+
+      Syntax::VariableReference.new(var.name)
     end
 
     def fragments

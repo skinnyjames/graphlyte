@@ -4,6 +4,31 @@ require_relative './syntax'
 require_relative './refinements/string_refinement'
 
 module Graphlyte
+  class ArgumentBuilder
+    using Graphlyte::Refinements::StringRefinement
+
+    def initialize(document)
+      @document = document
+    end
+
+    def build(arguments)
+      arguments.to_a.map do |(k, v)|
+        value = case v
+                when Syntax::Value
+                  v # built via Graphlyte.enum for example
+                when SelectionBuilder::Variable
+                  @document.declare(v)
+                when Symbol
+                  Syntax::VariableReference.new(v.name.camelize)
+                else
+                  Syntax::Value.from_ruby(v)
+                end
+
+        Syntax::Argument.new(k.to_s.camelize, value)
+      end
+    end
+  end
+
   class WithField
     def initialize(field, builder)
       @field = field
@@ -24,9 +49,7 @@ module Graphlyte
       directive = Syntax::Directive.new(name.to_s)
 
       if kwargs.any?
-        directive.arguments = kwargs.to_a.map do
-          Syntax::Argument.new(name: _1.first.to_s, value: Syntax::Value.from_ruby(_1.last))
-        end
+        directive.arguments = @builder.argument_builder.build(kwargs)
       end
 
       if block_given?
@@ -104,19 +127,7 @@ module Graphlyte
         end
 
         if kwargs.any?
-          field.arguments = kwargs.to_a.map do |(k, v)|
-            value = case v
-                    when Syntax::Value
-                      v # built via Graphlyte.enum for example
-                    when Variable, Symbol
-                      @document.declare(v) if v.is_a?(Variable)
-                      Syntax::VariableReference.new(v.name)
-                    else
-                      Syntax::Value.from_ruby(v)
-                    end
-
-            Syntax::Argument.new(k.to_s, value)
-          end
+          field.arguments = argument_builder.build(kwargs)
         end
 
         if block_given?
@@ -127,6 +138,10 @@ module Graphlyte
 
         WithField.new(field, self)
       end
+    end
+
+    def argument_builder
+      @argument_builder ||= ArgumentBuilder.new(@document)
     end
 
     def method_missing(name, *args, **kwargs, &block)
