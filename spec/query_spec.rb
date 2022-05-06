@@ -16,9 +16,11 @@ describe Graphlyte do
       }
     STRING
   end
+
   it 'does not shadow fields' do
     query = Graphlyte.query do
       hero do
+        _
         on
         build
         argument_builder
@@ -28,7 +30,7 @@ describe Graphlyte do
     expect(query).to produce_equivalent_document(<<~STRING)
       {
         hero {
-          on build argumentBuilder
+          _ on build argumentBuilder
         }
       }
     STRING

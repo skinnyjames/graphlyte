@@ -9,6 +9,8 @@ module Graphlyte
 
       refine String do
         def camelize
+          return self if match(/^_*$/)
+
           start_of_string = match(/(^_+)/)&.[](0)
           end_of_string = match(/(_+$)/)&.[](0)
 

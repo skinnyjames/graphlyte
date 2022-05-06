@@ -95,7 +95,6 @@ module Graphlyte
             yield object if block_given?
             processor.call(object, action) if processor
           rescue Deleted
-            binding.pry
             action.new_nodes = []
           end
         else
@@ -138,7 +137,6 @@ module Graphlyte
         object.arguments = object.arguments&.flat_map do |arg|
           edit(arg) do |a|
             arg.value = edit_value(arg.value).first
-            binding.pry if arg.value.nil?
             raise Deleted if arg.value.nil?
           end
         end
