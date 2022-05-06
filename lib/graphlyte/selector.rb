@@ -29,7 +29,7 @@ module Graphlyte
       key = action.path.map { _1.name if _1.is_a?(Syntax::Field) }.compact.join('.')
       block = @actions[key]
 
-      block.call(SelectAction.new(field, action)) if block
+      block&.call(SelectAction.new(field, action))
     end
 
     class SelectAction

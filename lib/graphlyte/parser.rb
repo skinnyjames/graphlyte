@@ -288,11 +288,11 @@ module Graphlyte
       bracket('[', ']') { type_name }
     end
 
-    def bracket(lhs, rhs)
+    def bracket(lhs, rhs, &block)
       expect(:PUNCTATOR, lhs)
       raise TooDeep, current.location if too_deep?
 
-      ret = subfeature { yield }
+      ret = subfeature(&block)
 
       expect(:PUNCTATOR, rhs)
 
@@ -330,36 +330,34 @@ module Graphlyte
       all_symbols = alternatives.all? { _1.is_a?(Symbol) }
 
       alternatives.each do |alt|
-        begin
-          case alt
-          when Symbol
-            return try_parse { send(alt) }
-          when Proc
-            return try_parse { alt.call }
-          else
-            raise 'Not an alternative'
-          end
-        rescue ParseError => ex
-          err = ex
+        case alt
+        when Symbol
+          return try_parse { send(alt) }
+        when Proc
+          return try_parse { alt.call }
+        else
+          raise 'Not an alternative'
         end
+      rescue ParseError => e
+        err = e
       end
 
       raise ParseError, "At #{current.location}: Expected one of #{alternatives.join(', ')}" if err && all_symbols
       raise err if err
     end
 
-    def optional
-      try_parse { yield }
+    def optional(&block)
+      try_parse(&block)
     rescue ParseError, IllegalValue
       nil
     end
 
-    def many(limit: nil)
+    def many(limit: nil, &block)
       ret = []
 
       until ret.length == limit
         begin
-          ret << try_parse { yield }
+          ret << try_parse(&block)
         rescue ParseError
           return ret
         end
@@ -368,9 +366,9 @@ module Graphlyte
       ret
     end
 
-    def some
+    def some(&block)
       one = yield
-      rest = many { yield }
+      rest = many(&block)
 
       [one] + rest
     end
@@ -378,13 +376,13 @@ module Graphlyte
     def try_parse
       idx = @index
       yield
-    rescue ParseError => ex
+    rescue ParseError => e
       @index = idx
-      raise ex
-    rescue IllegalValue => ex
+      raise e
+    rescue IllegalValue => e
       t = current
       @index = idx
-      raise Illegal, t, ex.message
+      raise Illegal, t, e.message
     end
 
     def subfeature

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "./dsl"
+require_relative './dsl'
 
 module Graphlyte
   module SchemaQuery
@@ -10,34 +10,34 @@ module Graphlyte
       type_ref_fragment = dsl.fragment(on: '__Type') do
         kind
         name
-        of_type { 
+        of_type do
           kind
           name
-          of_type {
+          of_type do
             kind
             name
-            of_type {
+            of_type do
               kind
               name
-              of_type {
+              of_type do
                 kind
                 name
-                of_type {
+                of_type do
                   kind
                   name
-                  of_type {
+                  of_type do
                     kind
                     name
-                    of_type {
+                    of_type do
                       kind
                       name
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
       end
 
       input_value_fragment = dsl.fragment(on: '__InputValue') do

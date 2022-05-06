@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "./syntax"
-require_relative "./selection_builder"
+require_relative './syntax'
+require_relative './selection_builder'
 require_relative './refinements/string_refinement'
-require_relative "./editors/infer_signature"
+require_relative './editors/infer_signature'
 
 module Graphlyte
   class DSL

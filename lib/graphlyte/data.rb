@@ -7,12 +7,12 @@ module Graphlyte
   class Data
     def self.attr_accessor(*names)
       super
-      self.attributes.merge(names)
+      attributes.merge(names)
     end
 
     def self.attr_reader(*names)
       super
-      self.attributes.merge(names)
+      attributes.merge(names)
     end
 
     def self.attributes
@@ -22,7 +22,7 @@ module Graphlyte
     # Permissive constructor: ignores unknown attributes
     def initialize(**kwargs)
       self.class.attributes.each do |arg|
-        self.send(:"#{arg}=", kwargs[arg]) if kwargs.key?(arg)
+        send(:"#{arg}=", kwargs[arg]) if kwargs.key?(arg)
       end
     end
 

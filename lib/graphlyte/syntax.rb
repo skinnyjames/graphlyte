@@ -23,12 +23,15 @@ module Graphlyte
       end
 
       def valid_type?
-        [:query, :mutation, :subscription].include?(type)
+        %i[query mutation subscription].include?(type)
       end
 
       def type=(value)
         @type = value
-        raise IllegalValue, "Illegal value: #{value.inspect}. Expected query, mutation or subscription" unless valid_type?
+        unless valid_type?
+          raise IllegalValue,
+                "Illegal value: #{value.inspect}. Expected query, mutation or subscription"
+        end
       end
     end
 
@@ -195,6 +198,7 @@ module Graphlyte
         case type_ref.kind
         when :NON_NULL
           raise ArgumentError, "#{type_ref.kind} must have inner type" unless inner
+
           type.non_null = true
           if inner.is_list
             type.is_list = true
@@ -204,10 +208,12 @@ module Graphlyte
           end
         when :LIST
           raise ArgumentError, "#{type_ref.kind} must have inner type" unless inner
+
           type.is_list = true
           type.inner = inner
         when :SCALAR, :OBJECT, :ENUM
           raise ArgumentError, "#{type_ref.kind} cannot have inner type" if inner
+
           type.inner = type_ref.name
         else
           raise ArgumentError, "Unexpected kind: #{type_ref.kind.inspect}"
@@ -243,8 +249,7 @@ module Graphlyte
       def inspect
         "#<#{self.class.name} @type=#{type} @value=#{value.inspect}>"
       end
-      alias_method :to_s, :inspect
-
+      alias to_s inspect
 
       def eql?(other)
         return true if super
@@ -254,8 +259,8 @@ module Graphlyte
       end
 
       def numeric_eql?(other)
-        return false if !number?
-        return false if !other&.number?
+        return false unless number?
+        return false unless other&.number?
 
         if floating? || other.floating?
           value.to_f == other.value.to_f
@@ -265,7 +270,7 @@ module Graphlyte
       end
 
       def floating?
-        return false if !number?
+        return false unless number?
         return true if value.is_a?(Float)
         return true if value.is_a?(NumericLiteral) && value.floating?
 
@@ -280,7 +285,7 @@ module Graphlyte
         case value
         when String
           # TODO: handle block strings?
-          '"' + value.gsub(/"/, '\"').gsub("\n", '\n').gsub("\t", '\t') + '"'
+          "\"#{value.gsub(/"/, '\"').gsub("\n", '\n').gsub("\t", '\t')}\""
         else
           value.to_s
         end
@@ -346,13 +351,13 @@ module Graphlyte
         n = to_i.to_f
         if fractional_part
           fp = fractional_part.to_i.to_f * (negated ? -1 : 1)
-          fp = fp / (10 ** (fractional_part.length))
+          fp /= (10**fractional_part.length)
           n += fp
         end
         if exponent_part
           e = exponent_part.last.to_i
           e *= exponent_part.first == '-' ? -1 : 1
-          n *= (10 ** e)
+          n *= (10**e)
         end
 
         n

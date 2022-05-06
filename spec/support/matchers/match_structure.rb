@@ -57,11 +57,12 @@ RSpec::Matchers.define :match_structure do |structure|
 
   def process_structure(structure)
     structure.transform_values do |value|
-      if value.is_a?(Array)
+      case value
+      when Array
         hash = { length: value.length }
         value.each_with_index { |v, i| hash[i] = v }
         match_structure(hash)
-      elsif value.is_a?(Hash)
+      when Hash
         match_structure(value)
       else
         value

@@ -5,7 +5,7 @@ require 'rspec/expectations'
 class DocDiff
   # delegate :empty?, to: :differences
 
-  class Entry < Struct.new(:path, :msg)
+  Entry = Struct.new(:path, :msg) do
     def to_s
       "(#{path.join('.')}): #{msg}"
     end
@@ -55,7 +55,7 @@ class DocDiff
   end
 
   def diff_signatures(path, expected, actual)
-    path = path + [:signature, :variables]
+    path += %i[signature variables]
     expected = Array(expected.variables)
     actual = Array(actual.variables)
 
@@ -71,7 +71,7 @@ class DocDiff
   end
 
   def diff_directives(path, expected, actual)
-    path = path + [:directives]
+    path += [:directives]
     expected = Array(expected.directives)
     actual = Array(actual.directives)
 
@@ -81,7 +81,7 @@ class DocDiff
   end
 
   def diff_selection(path, expected, actual)
-    path = path + [:selection]
+    path += [:selection]
     expected = Array(expected.selection)
     actual = Array(actual.selection)
 
@@ -97,7 +97,7 @@ class DocDiff
       end
     end
 
-    only_in_actual.each_with_index do |a, i|
+    only_in_actual.each_with_index do |_a, i|
       @differences << Entry.new(path + [i + n], 'Only in actual')
     end
   end
@@ -121,20 +121,20 @@ class DocDiff
   end
 
   def diff_field(path, expected, actual)
-    path = path + [:field]
+    path += [:field]
     diff_attr(:name, path, expected, actual)
     diff_arguments(path, expected, actual)
     diff_directives(path, expected, actual)
     diff_selection(path, expected, actual)
   end
 
-  def diff_inline_fragment(path, expected, actual)
-    path = path + [:inline_fragment]
+  def diff_inline_fragment(path, _expected, _actual)
+    path += [:inline_fragment]
     # TODO
   end
 
   def diff_arguments(path, expected, actual)
-    path = path + [:arguments]
+    path += [:arguments]
     expected = Array(expected.arguments)
     actual = Array(actual.arguments)
 

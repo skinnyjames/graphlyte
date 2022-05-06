@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "forwardable"
+require 'forwardable'
 
 require_relative './syntax'
 require_relative './data'
@@ -25,7 +25,7 @@ module Graphlyte
     end
 
     def +(other)
-      return self.dup unless other
+      return dup unless other
 
       other = other.dup
       doc = dup
@@ -40,7 +40,7 @@ module Graphlyte
       other.is_a?(self.class) && other.fragments == fragments && other.operations == operations
     end
 
-    alias_method :==, :eql?
+    alias == eql?
 
     def define(dfn)
       @definitions << dfn

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "forwardable"
+require 'forwardable'
 
 # See: https://github.com/graphql/graphql-spec/blob/main/spec/Appendix%20B%20--%20Grammar%20Summary.md
 #
 # This module implements tokenization of
-# [Lexical Tokens](https://github.com/graphql/graphql-spec/blob/main/spec/Appendix%20B%20--%20Grammar%20Summary.md#lexical-tokens) 
+# [Lexical Tokens](https://github.com/graphql/graphql-spec/blob/main/spec/Appendix%20B%20--%20Grammar%20Summary.md#lexical-tokens)
 # as per the GraphQL spec.
 #
 # Usage:
@@ -35,9 +35,9 @@ module Graphlyte
       N O P Q R S T U V W X Y Z
       a b c d e f g h i j k l m
       n o p q r s t u v w x y z
-    ]
+    ].freeze
 
-    DIGITS = %w[0 1 2 3 4 5 6 7 8 9]
+    DIGITS = %w[0 1 2 3 4 5 6 7 8 9].freeze
 
     Position = Struct.new(:line, :col) do
       def to_s
@@ -80,6 +80,7 @@ module Graphlyte
       extend Forwardable
 
       attr_reader :type, :lexeme, :location
+
       def_delegators :@location, :line, :col, :length
 
       def initialize(type, lexeme, location, value: nil)
@@ -97,7 +98,6 @@ module Graphlyte
         @type == :PUNCTATOR && @lexeme == value
       end
     end
-
 
     attr_reader :source, :tokens
     attr_accessor :line, :column, :index, :lexeme_start_p
@@ -168,8 +168,8 @@ module Graphlyte
 
       nil
     end
-    
-    def string(c)
+
+    def string(_c)
       if lookahead == DOUBLE_QUOTE && lookahead(2) != DOUBLE_QUOTE
         consume
         '' # The empty string
@@ -218,10 +218,10 @@ module Graphlyte
       when 'n' then LINEFEED
       when 'r' then "\r"
       when 't' then "\t"
-      when 'u' then
+      when 'u'
         char_code = [1, 2, 3, 4].map do
           d = consume
-          hex_digit = (digit?(d) || ('a' ... 'f').cover?(d.downcase))
+          hex_digit = (digit?(d) || ('a'...'f').cover?(d.downcase))
           lex_error("Expected a hex digit in unicode escape sequence. Got #{d.inspect}") unless hex_digit
 
           d
@@ -238,9 +238,7 @@ module Graphlyte
       terminated = false
 
       until eof? || terminated = consume(BLOCK_QUOTE)
-        if consume('\\' + BLOCK_QUOTE)
-          chars << BLOCK_QUOTE
-        end
+        chars << BLOCK_QUOTE if consume("\\#{BLOCK_QUOTE}")
         chars << '"' while consume(DOUBLE_QUOTE)
         while char = string_character(block_string: true)
           chars << char
@@ -261,11 +259,9 @@ module Graphlyte
       lines.map { _1[left_margin..] }.join(LINEFEED)
     end
 
-    def take_while(&block)
+    def take_while
       chars = []
-      while yield(lookahead)
-        chars << consume
-      end
+      chars << consume while yield(lookahead)
 
       chars
     end
@@ -317,13 +313,14 @@ module Graphlyte
     end
 
     def string_start?(c)
-      '"' == c
+      c == '"'
     end
 
     def numeric_start?(c)
-      if '-' == c
+      case c
+      when '-'
         DIGITS.include?(lookahead)
-      elsif c == '0'
+      when '0'
         !DIGITS.include?(lookahead)
       else
         c != '0' && DIGITS.include?(c)
@@ -335,7 +332,7 @@ module Graphlyte
       value = yield
       j = index
 
-      Token.new(type, source[i..j], current_location, value: value) 
+      Token.new(type, source[i..j], current_location, value: value)
     end
 
     def number(c)
@@ -398,7 +395,7 @@ module Graphlyte
     def ignore_comment_line
       take_while { !NEW_LINE.include?(_1) }
 
-      return
+      nil
     end
   end
 end

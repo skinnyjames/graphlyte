@@ -14,9 +14,9 @@ module Mocks
 
       command = %w[json-graphql-server fixture/mocks.json --p 5000]
 
-      @server_pid = spawn(*command, [:err, :out] => [log_file, 'w'])
+      @server_pid = spawn(*command, %i[err out] => [log_file, 'w'])
 
-      STDOUT.print 'Waiting for server'
+      $stdout.print 'Waiting for server'
       slept = 0
       until slept > timeout || File.exist?(log_file) && File.read(log_file).include?('server running')
         sleep(0.1)

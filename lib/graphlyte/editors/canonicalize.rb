@@ -17,8 +17,8 @@ module Graphlyte
 
       def order_argments
         Editor.new
-          .on_field { |field| field.arguments = field.arguments&.sort_by(&:name) }
-          .on_directive { |dir| dir.arguments = dir.arguments&.sort_by(&:name) }
+              .on_field { |field| field.arguments = field.arguments&.sort_by(&:name) }
+              .on_directive { |dir| dir.arguments = dir.arguments&.sort_by(&:name) }
       end
     end
   end

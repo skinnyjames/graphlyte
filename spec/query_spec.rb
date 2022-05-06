@@ -1,4 +1,6 @@
-describe Graphlyte do 
+# frozen_string_literal: true
+
+describe Graphlyte do
   it 'is possible to select fields that we cannot name in ruby' do
     query = Graphlyte.query do
       hero do
@@ -78,7 +80,7 @@ describe Graphlyte do
     STRING
   end
 
-  it "converts snake_case to camelCase" do
+  it 'converts snake_case to camelCase' do
     query = Graphlyte.query do
       snake_case_works
       __type_name
@@ -96,7 +98,7 @@ describe Graphlyte do
     STRING
   end
 
-  it "should support buik queries" do 
+  it 'should support buik queries' do
     query_1 = Graphlyte.query('FR') do |b|
       b.bulk(id: 1) do |b|
         b.bon

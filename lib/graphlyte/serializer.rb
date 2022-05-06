@@ -9,8 +9,7 @@ module Graphlyte
     NEWLINE = "\n"
 
     attr_reader :buff, :indent
-    attr_accessor :line_length
-    attr_accessor :max_fields_per_line
+    attr_accessor :line_length, :max_fields_per_line
 
     def initialize(buff = [])
       @buff = buff
@@ -23,7 +22,7 @@ module Graphlyte
       return unless definitions&.any?
 
       definitions.each_with_index do |dfn, i|
-        buff << NEWLINE << NEWLINE if i > 0
+        buff << NEWLINE << NEWLINE if i.positive?
 
         case dfn
         when Graphlyte::Syntax::Operation
@@ -53,7 +52,7 @@ module Graphlyte
 
       buff << SPACE << '{'
 
-      if selection.length < max_fields_per_line && selection.all?(&:simple?) && (selection.sum { _1.name.length } + selection.length  + indent) < line_length
+      if selection.length < max_fields_per_line && selection.all?(&:simple?) && (selection.sum { _1.name.length } + selection.length + indent) < line_length
         buff << SPACE
         selection.each do |field|
           buff << field.name

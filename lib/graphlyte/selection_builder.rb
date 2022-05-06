@@ -38,23 +38,17 @@ module Graphlyte
     def alias(name, &block)
       @field.as = name
 
-      if block_given?
-        @field.selection += @builder.build!(&block)
-      end
+      @field.selection += @builder.build!(&block) if block_given?
 
       self
     end
 
-    def method_missing(name, *args, **kwargs, &block)
+    def method_missing(name, *_args, **kwargs, &block)
       directive = Syntax::Directive.new(name.to_s)
 
-      if kwargs.any?
-        directive.arguments = @builder.argument_builder!.build(kwargs)
-      end
+      directive.arguments = @builder.argument_builder!.build(kwargs) if kwargs.any?
 
-      if block_given?
-        @field.selection += @builder.build!(&block)
-      end
+      @field.selection += @builder.build!(&block) if block_given?
 
       @field.directives << directive
 
@@ -104,7 +98,7 @@ module Graphlyte
       @selection = curr
       instance_eval(&block)
 
-      return curr
+      curr
     ensure
       @selection = old
     end
@@ -152,13 +146,9 @@ module Graphlyte
           end
         end
 
-        if kwargs.any?
-          field.arguments = argument_builder!.build(kwargs)
-        end
+        field.arguments = argument_builder!.build(kwargs) if kwargs.any?
 
-        if block_given?
-          field.selection += self.class.build(@document, &block)
-        end
+        field.selection += self.class.build(@document, &block) if block_given?
 
         @selection << field
 
