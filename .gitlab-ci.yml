@@ -21,6 +21,14 @@ rspec:
         coverage_format: cobertura
   coverage: '/\(\d+.\d+\%\) covered/'
 
+rubocop:
+  stage: test
+  allow_failure: true # until we fix all cops
+  before_script:
+    - bundle install
+  script:
+    - bundle exec rubocop
+
 pages:
   stage: deploy
   dependencies:
