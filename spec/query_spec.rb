@@ -60,6 +60,28 @@ describe Graphlyte do
     STRING
   end
 
+  it 'supports fragments' do
+    fragment = Graphlyte.fragment(on: 'Friends') { something }
+
+    query = Graphlyte.query do
+      hero(episode: :episode) do
+        self << fragment
+      end
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        hero(episode: $episode) {
+          ... FriendsFields
+        }
+      }
+
+      fragment FriendsFields on Friends {
+        something
+      }
+    STRING
+  end
+
   it 'supports inline fragments' do
     query = Graphlyte.query do
       hero(episode: :episode) do

@@ -3,40 +3,49 @@
 require 'stringio'
 
 module Mocks
+  CouldNotStartServer = Class.new(StandardError)
+  LOG_FILE = 'log/json-graphql-server.log'
+
   def self.included(mod)
     mod.before(:all) do
       next if @server_pid
 
-      log_file = 'log/json-graphql-server.log'
-      timeout = 2 # seconds
-
-      File.truncate(log_file, 0) if File.exist?(log_file)
-
-      command = %w[json-graphql-server fixture/mocks.json --p 5000]
-
-      @server_pid = spawn(*command, %i[err out] => [log_file, 'w'])
-
-      $stdout.print 'Waiting for server'
-      slept = 0
-      until slept > timeout || File.exist?(log_file) && File.read(log_file).include?('server running')
-        sleep(0.1)
-        slept += 0.1
-        putc '.'
-      end
-
-      if slept > timeout
-        Process.kill('TERM', @server_pid) if @server_pid
-        @server_pid = nil
-        raise 'Could not start server' if timeout
-      end
-
-      puts ' ready'
+      @server_pid = start_graphql_server
     end
 
     mod.after(:all) do
       Process.kill('TERM', @server_pid) if @server_pid
       @server_pid = nil
     end
+  end
+
+  def start_graphql_server
+    File.truncate(LOG_FILE, 0) if File.exist?(LOG_FILE)
+
+    command = %w[json-graphql-server fixture/mocks.json --p 5000]
+    server_pid = spawn(*command, %i[err out] => [LOG_FILE, 'w'])
+
+    wait_for_server
+
+    server_pid
+  rescue CouldNotStartServer
+    Process.kill('TERM', server_pid) if server_pid
+  end
+
+  def wait_for_server
+    # $stdout.print 'Waiting for server'
+    timeout = 2 # seconds
+    slept = 0
+
+    until File.exist?(LOG_FILE) && File.read(LOG_FILE).include?('server running')
+      sleep(0.1)
+      slept += 0.1
+      raise CouldNotStartServer, 'Could not start mock graphql server' if slept > timeout
+
+      # putc '.'
+    end
+
+    # puts ' ready'
   end
 
   def mock_response(name)
