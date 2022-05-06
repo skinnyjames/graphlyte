@@ -5,3 +5,8 @@ test.rb
 *.gem
 /public/
 .yardoc/
+coverage
+
+.bundle
+nohup.out
+log/*.log

@@ -1,25 +1,52 @@
 describe Graphlyte do 
-  it "should not expose method_missing on factory objects" do 
-    query = Graphlyte.query do |b|
-      b.id
+  it 'is possible to select fields that we cannot name in ruby' do
+    query = Graphlyte.query do
+      hero do
+        select!(:select)
+        select!(:open)
+        select!(:if)
+      end
     end
 
-    expect { query.something }.to raise_error do |e|
-      expect(e.class).to be(NoMethodError)
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        hero {
+          select open if
+        }
+      }
+    STRING
+  end
+
+  it 'does not shadow fields' do
+    query = Graphlyte.query do
+      hero do
+        _
+        on
+        build
+        argument_builder
+      end
     end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        hero {
+          _ on build argumentBuilder
+        }
+      }
+    STRING
   end
 
   it 'should support directives' do
     query = Graphlyte.query do
-      hero(episode: Graphlyte::TYPES.episode(:episode)) do
+      hero(episode: :episode) do
         name
-        friends.include(if: Graphlyte::TYPES.withFriends(:with_friends)) do
+        friends.include(if: :with_friends) do
           name
         end
       end
     end
 
-    expect(query.to_s).to eql(<<~STRING)
+    expect(query).to produce_equivalent_document(<<~STRING)
       {
         hero(episode: $episode) {
           name
@@ -33,14 +60,14 @@ describe Graphlyte do
 
   it 'supports inline fragments' do
     query = Graphlyte.query do
-      hero(episode: Graphlyte::TYPES.episode(:episode)) do |f|
-        f << Graphlyte.inline_fragment('Friends') do
+      hero(episode: :episode) do
+        on!('Friends') do
           something
         end
       end
     end
 
-    expect(query.to_s).to eql(<<~STRING)
+    expect(query).to produce_equivalent_document(<<~STRING)
       {
         hero(episode: $episode) {
           ... on Friends {
@@ -51,45 +78,15 @@ describe Graphlyte do
     STRING
   end
 
-  it 'supports inline directives' do
-    directive = Graphlyte::Directive.new(:include, if: Graphlyte::TYPES.expandedInfo(:expanded_info))
-
+  it "converts snake_case to camelCase" do
     query = Graphlyte.query do
-      hero(episode: Graphlyte::TYPES.episode(:episode)) do |f|
-        f << Graphlyte.inline_directive(directive) do
-          first_name
-          last_name
-          birthday
-        end
-      end
+      snake_case_works
+      __type_name
+      type_name__
+      self.User # must use self. to refer to 'constants'
     end
 
-    expect(query.to_s).to eql(<<~STRING)
-      {
-        hero(episode: $episode) {
-          ... @include(if: $expandedInfo) {
-            firstName
-            lastName
-            birthday
-          }
-        }
-      }
-    STRING
-
-    expect(query.placeholders).to eql(<<~STRING.chomp)
-      :episode of episode
-      :expanded_info of expandedInfo
-    STRING
-  end
-
-  it "should convert snake_case to camelCase" do
-    query = Graphlyte.query do |b|
-      b.snake_case_works
-      b.__type_name
-      b.type_name__
-      b.User # can't avoid this
-    end
-    expect(query.to_s).to eql(<<~STRING)
+    expect(query).to produce_equivalent_document(<<~STRING)
       {
         snakeCaseWorks
         __typeName
@@ -100,28 +97,30 @@ describe Graphlyte do
   end
 
   it "should support buik queries" do 
-    query_1 = Graphlyte.query do |b|
+    query_1 = Graphlyte.query('FR') do |b|
       b.bulk(id: 1) do |b|
-        b.ok
+        b.bon
+        b.mal
       end
     end
 
-    query_2 = Graphlyte.query do |b|
+    query_2 = Graphlyte.query('DE') do |b|
       b.bulk(id: 2) do |b|
-        b.ok
+        b.gut
+        b.schlecht
       end
     end
 
-    expect(query_1 + query_2).to eql(<<~STRING) 
-      {
+    expect(query_1 + query_2).to produce_equivalent_document(<<~STRING)
+      query FR {
         bulk(id: 1) {
-          ok
+          bon mal
         }
       }
 
-      {
+      query DE {
         bulk(id: 2) {
-          ok
+          gut schlecht
         }
       }
     STRING

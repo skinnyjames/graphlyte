@@ -11,15 +11,23 @@ rspec:
     HOST: 127.0.0.1
   stage: test
   script:
-    - nohup json-graphql-server fixture/mocks.json --p 5000 &
-    - sleep 10
     - bundle exec rspec
   artifacts:
     paths:
       - coverage/
     reports:
-      cobertura: coverage/coverage.xml
+      coverage_report:
+        path: coverage/cobertura-coverage.xml
+        coverage_format: cobertura
   coverage: '/\(\d+.\d+\%\) covered/'
+
+rubocop:
+  stage: test
+  allow_failure: true # until we fix all cops
+  before_script:
+    - bundle install
+  script:
+    - bundle exec rubocop
 
 pages:
   stage: deploy

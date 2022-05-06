@@ -1,38 +1,11 @@
 require_relative "./refinements/string_refinement"
 require "json"
+
 module Graphlyte
   class Selector
-    def initialize(selector)
-      @selector_tokens = selector.split('.')
-    end
-
-    def modify(fields, selector_tokens = @selector_tokens, &block)
-      token = selector_tokens.shift
-
-      if token == '*'
-        fields.each do |field|
-          next if field.class == Fragment
-
-          modify(field.fieldset.fields, [token], &block)
-          field.fieldset.builder.instance_eval(&block) unless field.fieldset.fields.empty?
-        end
-      else
-        needle = fields.find do |field|
-          field.name == token
-        end
-
-        raise "#{token} not found in query" unless needle
-
-        if selector_tokens.size.zero?
-          needle.fieldset.builder.instance_eval(&block)
-        else
-          modify(needle.fieldset.fields, selector_tokens, &block)
-        end
-      end
-    end
   end
 
-  class Query < Fieldset
+  class Query
     using Refinements::StringRefinement
     attr_reader :name, :type
 

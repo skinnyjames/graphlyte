@@ -1,0 +1,6 @@
+query Foo($x: Int = 10) {
+  currentUser @client {
+    name(format: LONG), years: age @show(if: true)
+  }
+  thingy(id: $x) { foo }
+}
