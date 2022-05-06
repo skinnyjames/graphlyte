@@ -6,6 +6,7 @@ require_relative './syntax'
 require_relative './data'
 require_relative './serializer'
 require_relative './refinements/string_refinement'
+require_relative './editors/with_variables'
 
 module Graphlyte
   class Document < Graphlyte::Data
