@@ -89,7 +89,7 @@ module Graphlyte
       buff = []
       write(buff)
 
-      buff.join('')
+      buff.join
     end
 
     # More efficient for writing to files or streams - avoids building up the full string.

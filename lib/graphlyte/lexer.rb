@@ -188,7 +188,7 @@ module Graphlyte
 
       lex_error('Unterminated string') unless consume(DOUBLE_QUOTE)
 
-      chars.join('')
+      chars.join
     end
 
     def string_character(block_string: false)
@@ -227,7 +227,7 @@ module Graphlyte
           d
         end
 
-        char_code.join('').hex.chr
+        char_code.join.hex.chr
       else
         lex_error("Unexpected escaped character in string: #{c}")
       end
@@ -248,7 +248,7 @@ module Graphlyte
       lex_error('Unterminated string') unless terminated
 
       # Strip leading and trailing blank lines
-      lines = chars.join('').lines.map(&:chomp)
+      lines = chars.join.lines.map(&:chomp)
       lines = lines.drop_while { _1 =~ /^\s*$/ }
       lines = lines.reverse.drop_while { _1 =~ /^\s*$/ }.reverse
       # Consistent indentation
@@ -363,13 +363,13 @@ module Graphlyte
 
       digits = take_while { digit?(_1) }
 
-      [sign, digits.join('')]
+      [sign, digits.join]
     end
 
     def name(c)
       value = [c] + take_while { name_continue?(_1) }
 
-      value.join('')
+      value.join
     end
 
     def name_start?(c)
