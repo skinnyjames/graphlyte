@@ -39,7 +39,7 @@ module Graphlyte
       @field.as = name
 
       if block_given?
-        @field.selection += @builder.build(&block)
+        @field.selection += @builder.build!(&block)
       end
 
       self
@@ -49,11 +49,11 @@ module Graphlyte
       directive = Syntax::Directive.new(name.to_s)
 
       if kwargs.any?
-        directive.arguments = @builder.argument_builder.build(kwargs)
+        directive.arguments = @builder.argument_builder!.build(kwargs)
       end
 
       if block_given?
-        @field.selection += @builder.build(&block)
+        @field.selection += @builder.build!(&block)
       end
 
       @field.directives << directive
@@ -66,6 +66,23 @@ module Graphlyte
     end
   end
 
+  # Main construct used to build selection sets, uses `method_missing` to
+  # select fields.
+  #
+  # Note: instance methods are either symbolic or end in bangs to avoid
+  # shadowing legal field names.
+  #
+  # Usage:
+  #
+  #   some_fields = %w[all these fields]
+  #   selection = SelectionBuilder.build(document) do
+  #     foo                             # basic field
+  #     bar(baz: 1) { x; y; z}          # field with sub-selection
+  #     some_fields.each { self << _1 } # Adding fields dynamically
+  #   end
+  #
+  # You should probably never need to call this directly - it is used to
+  # implement the DSL class.
   class SelectionBuilder
     using Graphlyte::Refinements::StringRefinement
 
@@ -73,42 +90,47 @@ module Graphlyte
     Variable = Struct.new(:type, :name, keyword_init: true)
 
     def self.build(document, &block)
-      new(document).build(&block)
+      new(document).build!(&block)
     end
 
     def initialize(document)
       @document = document
     end
 
-    def build(&block)
+    def build!(&block)
       old = @selection
       curr = []
 
       @selection = curr
       instance_eval(&block)
+
       return curr
     ensure
       @selection = old
     end
 
-    def on(type_name, &block)
+    def on!(type_name, &block)
       frag = Graphlyte::Syntax::InlineFragment.new
       frag.type_name = type_name
-      frag.selection = build(&block)
+      frag.selection = build!(&block)
 
-      select frag
+      select! frag
     end
 
-    def <<(fragment)
-      select(fragment)
-    end
-
-    # Use this method directly to refer to fields that are shadowed by built-in
-    # methods or to include fragments explicitly at a given point.
+    # Selected can be:
     #
-    # Note that the 'select' field name must always be refered to using `select('select')`,
-    # and this method must be used to specify underscored field names
-    def select(selected, *args, as: nil, **kwargs, &block)
+    # - a string or symbol (field name)
+    # - a Graphlyte::Syntax::{Fragment,Field,InlineFragment}
+    # - a SelectionBuilder::Variable (constructed with `DSL#var`).
+    #
+    # Use of this method (or `select!`) is necessary to add fields
+    # that shadow core method or construct names (e.g. `if`, `open`, `else`,
+    # `class` and so on).
+    def <<(selected)
+      select!(selected)
+    end
+
+    def select!(selected, *args, as: nil, **kwargs, &block)
       case selected
       when Graphlyte::Syntax::Fragment
         selected.required_fragments.each do |frag|
@@ -126,12 +148,12 @@ module Graphlyte
           when Symbol
             field.directives << Syntax::Directive.new(arg.to_s)
           else
-            field.selection += self.class.build(@document) { select arg }
+            field.selection += self.class.build(@document) { select! arg }
           end
         end
 
         if kwargs.any?
-          field.arguments = argument_builder.build(kwargs)
+          field.arguments = argument_builder!.build(kwargs)
         end
 
         if block_given?
@@ -144,7 +166,7 @@ module Graphlyte
       end
     end
 
-    def argument_builder
+    def argument_builder!
       @argument_builder ||= ArgumentBuilder.new(@document)
     end
 
@@ -153,7 +175,7 @@ module Graphlyte
         aka = name.to_s.chomp('=')
         args[0].alias(aka)
       else
-        select(name.to_s.camelize, *args, **kwargs.transform_keys(&:camelize), &block)
+        select!(name.to_s.camelize, *args, **kwargs.transform_keys(&:camelize), &block)
       end
     end
 

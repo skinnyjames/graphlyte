@@ -1,4 +1,39 @@
 describe Graphlyte do 
+  it 'is possible to select fields that we cannot name in ruby' do
+    query = Graphlyte.query do
+      hero do
+        select!(:select)
+        select!(:open)
+        select!(:if)
+      end
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        hero {
+          select open if
+        }
+      }
+    STRING
+  end
+  it 'does not shadow fields' do
+    query = Graphlyte.query do
+      hero do
+        on
+        build
+        argument_builder
+      end
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        hero {
+          on build argumentBuilder
+        }
+      }
+    STRING
+  end
+
   it 'should support directives' do
     query = Graphlyte.query do
       hero(episode: :episode) do
@@ -24,7 +59,7 @@ describe Graphlyte do
   it 'supports inline fragments' do
     query = Graphlyte.query do
       hero(episode: :episode) do
-        on 'Friends' do
+        on!('Friends') do
           something
         end
       end
