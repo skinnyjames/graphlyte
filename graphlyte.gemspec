@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib']
   s.homepage    = 'https://rubygems.org/gems/graphlyte'
   s.metadata    = { "source_code_uri" => "https://gitlab.com/seanchristophergregory/graphlyte" }
-  s.add_runtime_dependency 'rest-client'
+  s.add_development_dependency 'rest-client'
   s.add_development_dependency 'rspec'
   s.add_development_dependency 'pry-byebug'
   s.add_development_dependency 'simplecov'

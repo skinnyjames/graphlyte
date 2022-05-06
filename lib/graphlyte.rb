@@ -2,7 +2,6 @@
 
 require 'forwardable'
 require 'json'
-require 'rest-client'
 
 require_relative "./graphlyte/syntax"
 require_relative "./graphlyte/schema"
@@ -29,16 +28,7 @@ module Graphlyte
     parser.query
   end
 
-  def self.dsl(uri, headers = {})
-    DSL.new(request_schema(uri, headers))
-  end
-
-  def self.request_schema(uri, headers = {})
-    body = { query: schema_query.to_s }.to_json
-    headers = { content_type: :json, accept: :json }.merge(headers)
-
-    resp = RestClient.post(uri, body, headers)
-
-    Schema.from_schema_response(JSON.parse(resp.body))
+  def self.dsl(schema)
+    DSL.new(schema)
   end
 end
