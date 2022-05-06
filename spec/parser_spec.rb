@@ -152,7 +152,7 @@ describe Graphlyte::Parser do
         var('raf'),
         int('1'),
         Graphlyte::Syntax::Value.new(
-          Graphlyte::Syntax::NumericLiteral.new('1', '2', nil, false),
+          Graphlyte::Syntax::NumericLiteral.new(integer_part: '1', fractional_part: '2'),
           :NUMBER
         ),
         string('some string'),
@@ -416,7 +416,7 @@ describe Graphlyte::Parser do
 
   def int(str)
     Graphlyte::Syntax::Value.new(
-      Graphlyte::Syntax::NumericLiteral.new(str, nil, nil, false),
+      Graphlyte::Syntax::NumericLiteral.new(integer_part: str),
       :NUMBER
     )
   end

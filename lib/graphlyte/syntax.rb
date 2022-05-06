@@ -2,6 +2,7 @@
 
 require_relative './errors'
 require_relative './data'
+require_relative './refinements/syntax_refinements'
 
 module Graphlyte
   module Syntax
@@ -235,7 +236,11 @@ module Graphlyte
       end
     end
 
+    # A CONST input value
+    # See: https://spec.graphql.org/October2021/#sec-Input-Values
     class Value < Graphlyte::Data
+      using Refinements::SyntaxRefinements
+
       attr_accessor :value, :type
 
       def initialize(value = nil, type = nil, **kwargs)
@@ -248,13 +253,13 @@ module Graphlyte
       def self.from_name(name)
         case name
         when 'true'
-          new(Syntax::TRUE, :BOOL)
+          true.to_input_value
         when 'false'
-          new(Syntax::FALSE, :BOOL)
+          false.to_input_value
         when 'null'
-          new(NULL, :NULL)
+          nil.to_input_value
         else
-          new(name.to_sym, :ENUM)
+          name.to_sym.to_input_value
         end
       end
 
@@ -275,7 +280,7 @@ module Graphlyte
         return false unless other&.number?
 
         if floating? || other.floating?
-          value.to_f == other.value.to_f
+          (value.to_f - other.value.to_f) < Float::EPSILON
         else
           value.to_i == other.value.to_i
         end
@@ -304,39 +309,25 @@ module Graphlyte
       end
 
       def self.from_ruby(object)
-        case object
-        when Hash
-          object.transform_keys(&:to_s).transform_values { from_ruby(_1) }
-        when Array
-          object.map { from_ruby(_1) }
-        when String
-          Value.new(object, :STRING)
-        when Symbol
-          Value.new(object, :ENUM)
-        when Integer, Float
-          Value.new(object, :NUMBER)
-        when TrueClass
-          Value.new(Syntax::TRUE)
-        when FalseClass
-          Value.new(Syntax::FALSE)
-        when NilClass
-          Value.new(NULL)
-        else
-          raise IllegalValue, object
-        end
+        object.to_input_value
+      rescue NoMethodError
+        raise IllegalValue, object
       end
     end
 
+    # A representation of a GraphQL literal, preserving the text components
+    #
+    # Note: NumericLiterals are immutable.
     class NumericLiteral < Graphlyte::Data
       attr_reader :integer_part, :fractional_part, :exponent_part, :negated
 
-      def initialize(integer_part = nil, fractional_part = nil, exponent_part = nil, negated = false, **kwargs)
-        @integer_part = integer_part || kwargs[:integer_part]
-        @fractional_part = fractional_part || kwargs[:fractional_part]
-        @exponent_part = exponent_part || kwargs[:exponent_part]
-        @negated = negated || kwargs[:negated]
+      def initialize(**kwargs)
+        super
+        @negated ||= false
 
         raise ArgumentError, 'integer_part is required' unless @integer_part
+
+        freeze
       end
 
       def floating?
@@ -354,25 +345,32 @@ module Graphlyte
       end
 
       def to_i
-        n = integer_part.to_i
-
-        negated ? -n : n
+        unnegate(negated, integer_part.to_i)
       end
 
       def to_f
         n = to_i.to_f
-        if fractional_part
-          fp = fractional_part.to_i.to_f * (negated ? -1 : 1)
-          fp /= (10**fractional_part.length)
-          n += fp
-        end
-        if exponent_part
-          e = exponent_part.last.to_i
-          e *= exponent_part.first == '-' ? -1 : 1
-          n *= (10**e)
-        end
+        n += fractional_value if fractional_part
+        n *= exponent_value if exponent_part
 
         n
+      end
+
+      private
+
+      attr_writer :integer_part, :fractional_part, :exponent_part, :negated
+
+      def exponent_value
+        10**unnegate(exponent_part.first, exponent_part.last.to_i)
+      end
+
+      def fractional_value
+        fp = unnegate(negated, fractional_part.to_i.to_f)
+        fp / (10**fractional_part.length)
+      end
+
+      def unnegate(negated, value)
+        value * (negated ? -1 : 1)
       end
     end
   end

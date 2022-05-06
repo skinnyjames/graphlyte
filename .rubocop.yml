@@ -3,6 +3,8 @@ AllCops:
 
 Metrics/ClassLength:
   Max: 200
+Metrics/MethodLength:
+  Max: 15
 Metrics/BlockLength:
   IgnoredMethods:
     - describe

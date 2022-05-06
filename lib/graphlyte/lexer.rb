@@ -335,16 +335,19 @@ module Graphlyte
       Token.new(type, source[i..j], current_location, value: value)
     end
 
-    def number(c)
-      is_negated = c == '-'
+    def number(char)
+      is_negated = char == '-'
 
-      int_part = is_negated ? [] : [c]
+      int_part = is_negated ? [] : [char]
       int_part += take_while { digit?(_1) }
 
       frac_part = fractional_part
       exp_part = exponent_part
 
-      Syntax::NumericLiteral.new(int_part&.join(''), frac_part&.join(''), exp_part, is_negated)
+      Syntax::NumericLiteral.new(integer_part: int_part&.join(''),
+                                 fractional_part: frac_part&.join(''),
+                                 exponent_part: exp_part,
+                                 negated: is_negated)
     end
 
     def fractional_part
