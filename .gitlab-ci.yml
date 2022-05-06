@@ -16,7 +16,9 @@ rspec:
     paths:
       - coverage/
     reports:
-      coverage_report: coverage/coverage.xml
+      coverage_report:
+        path: coverage/cobertura-coverage.xml
+        coverage_format: cobertura
   coverage: '/\(\d+.\d+\%\) covered/'
 
 pages:
