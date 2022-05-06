@@ -124,7 +124,7 @@ module Graphlyte
       select!(selected)
     end
 
-    def select!(selected, *args, as: nil, **kwargs, &block)
+    def select!(selected, *args, **kwargs, &block)
       case selected
       when Graphlyte::Syntax::Fragment
         selected.required_fragments.each do |frag|
@@ -135,7 +135,7 @@ module Graphlyte
         @selection << selected
       else
         name = selected.to_s
-        field = Syntax::Field.new(name: name, as: as, directives: [], selection: [])
+        field = Syntax::Field.new(name: name)
 
         args.each do |arg|
           case arg
@@ -169,7 +169,7 @@ module Graphlyte
       end
     end
 
-    def respond_to_missing
+    def respond_to_missing?(*)
       true
     end
   end

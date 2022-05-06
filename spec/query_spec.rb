@@ -38,7 +38,24 @@ describe Graphlyte do
     STRING
   end
 
-  it 'should support directives' do
+  it 'supports aliases' do
+    query = Graphlyte.query do
+      hero(name: 'Jo').alias(:jo) do
+        name
+      end
+
+      self.bill = hero(name: 'Bill') { name }
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        jo: hero(name: "Jo") { name }
+        bill: hero(name: "Bill") { name }
+      }
+    STRING
+  end
+
+  it 'supports directives' do
     query = Graphlyte.query do
       hero(episode: :episode) do
         name
