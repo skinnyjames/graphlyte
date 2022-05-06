@@ -11,7 +11,8 @@ Gem::Specification.new do |s|
   s.files       = Dir['lib/**/*.rb']
   s.require_paths = ['lib']
   s.homepage    = 'https://rubygems.org/gems/graphlyte'
-  s.metadata    = { 'source_code_uri' => 'https://gitlab.com/seanchristophergregory/graphlyte' }
+  s.metadata    = { 'source_code_uri' => 'https://gitlab.com/seanchristophergregory/graphlyte',
+                    'rubygems_mfa_required' => 'true' }
   s.add_development_dependency 'pry-byebug'
   s.add_development_dependency 'rest-client'
   s.add_development_dependency 'rspec'

@@ -5,7 +5,7 @@ require 'pry'
 require 'rest_client'
 require 'super_diff/rspec'
 
-if ENV['COVERAGE'] || ENV['CI']
+if ENV.fetch('COVERAGE') { ENV.fetch('CI', nil) }
   require 'simplecov'
   require 'simplecov-html'
   require 'simplecov-cobertura'

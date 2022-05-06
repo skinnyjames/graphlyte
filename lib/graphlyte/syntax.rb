@@ -236,9 +236,9 @@ module Graphlyte
       def self.from_name(name)
         case name
         when 'true'
-          new(TRUE, :BOOL)
+          new(Syntax::TRUE, :BOOL)
         when 'false'
-          new(FALSE, :BOOL)
+          new(Syntax::FALSE, :BOOL)
         when 'null'
           new(NULL, :NULL)
         else
@@ -304,9 +304,9 @@ module Graphlyte
         when Integer, Float
           Value.new(object, :NUMBER)
         when TrueClass
-          Value.new(TRUE)
+          Value.new(Syntax::TRUE)
         when FalseClass
-          Value.new(FALSE)
+          Value.new(Syntax::FALSE)
         when NilClass
           Value.new(NULL)
         else

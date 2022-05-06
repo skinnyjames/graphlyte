@@ -123,7 +123,7 @@ module Graphlyte
         # TODO: handle layout of large arrays nicely
         buff << '['
         value.each_with_index do |v, i|
-          buff << ', ' * [i, 1].min
+          buff << (', ' * [i, 1].min)
           dump_value(v)
         end
         buff << ']'
@@ -131,7 +131,7 @@ module Graphlyte
         # TODO: handle layout of large objects nicely
         buff << '{'
         value.each.each_with_index do |(k, v), i|
-          buff << ', ' * [i, 1].min
+          buff << (', ' * [i, 1].min)
           buff << k
           buff << ': '
           dump_value(v)
@@ -147,7 +147,7 @@ module Graphlyte
 
       buff << '('
       args.each_with_index do |arg, i|
-        buff << ', ' * [i, 1].min
+        buff << (', ' * [i, 1].min)
         buff << "#{arg.name}: "
         dump_value(arg.value)
       end
@@ -160,7 +160,7 @@ module Graphlyte
 
       buff << '('
       variable_definitions.each_with_index do |var, i|
-        buff << ', ' * [i, 1].min
+        buff << (', ' * [i, 1].min)
         buff << "$#{var.variable}: "
         buff << var.type.to_s
         buff << ' = ' if var.default_value
