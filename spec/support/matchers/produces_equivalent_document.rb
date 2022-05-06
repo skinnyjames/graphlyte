@@ -198,6 +198,28 @@ class DocDiff
   end
 end
 
+RSpec::Matchers.define :be_equivalent_to do |expected|
+  match do |actual|
+    @diff = DocDiff.new(expected, actual)
+
+    @diff.empty?
+  end
+
+  failure_message do |actual|
+    buff = [
+      'Queries do not match! Got:',
+      actual.to_s,
+      'Found the following differences:'
+    ]
+
+    @diff.differences.each do |difference|
+      buff << " - #{difference}"
+    end
+
+    buff.join("\n")
+  end
+end
+
 RSpec::Matchers.define :parse_like do |str|
   match do |actual|
     @expected = Graphlyte.parse(str)

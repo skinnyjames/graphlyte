@@ -148,9 +148,9 @@ module Graphlyte
       end
 
       field.name = parse_name
-      field.arguments = optional { arguments }
+      field.arguments = optional_list { arguments }
       field.directives = directives
-      field.selection = optional { selection_set }
+      field.selection = optional_list { selection_set }
 
       field
     end
@@ -350,6 +350,10 @@ module Graphlyte
       try_parse(&block)
     rescue ParseError, IllegalValue
       nil
+    end
+
+    def optional_list(&block)
+      optional(&block) || []
     end
 
     def many(limit: nil, &block)

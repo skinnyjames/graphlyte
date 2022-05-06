@@ -194,9 +194,11 @@ describe Graphlyte::Parser do
 
       q = p.operation
 
-      expect(selection_hash(q.selection)).to eq({
-                                                  a: { b: { c: { d: { e: { f: { g: { h: { i: { j: { k: { l: { m: { n: { o: {} } } } } } } } } } } } } } }
-                                                })
+      expected = {
+        a: { b: { c: { d: { e: { f: { g: { h: { i: { j: { k: { l: { m: { n: { o: {} } } } } } } } } } } } } } }
+      }
+
+      expect(selection_hash(q.selection)).to eq(expected)
     end
 
     it 'enforces a depth limit' do
@@ -272,7 +274,7 @@ describe Graphlyte::Parser do
     it 'parses a representative query' do
       p = parser(fixture('query_0'))
 
-      q = p.operation
+      q = p.document
 
       expected = Graphlyte::Syntax::Operation.new(
         type: :query,
@@ -290,7 +292,7 @@ describe Graphlyte::Parser do
           Graphlyte::Syntax::Field.new(
             as: nil,
             name: 'currentUser',
-            arguments: nil,
+            arguments: [],
             directives: [Graphlyte::Syntax::Directive.new('client', nil)],
             selection: [
               Graphlyte::Syntax::Field.new(
@@ -300,17 +302,17 @@ describe Graphlyte::Parser do
                   Graphlyte::Syntax::Argument.new('format', enum(:LONG))
                 ],
                 directives: [],
-                selection: nil
+                selection: []
               ),
               Graphlyte::Syntax::Field.new(
                 as: 'years',
                 name: 'age',
-                arguments: nil,
+                arguments: [],
                 directives: [Graphlyte::Syntax::Directive.new(
                   'show',
                   [Graphlyte::Syntax::Argument.new('if', true_value)]
                 )],
-                selection: nil
+                selection: []
               )
             ]
           ),
@@ -328,16 +330,18 @@ describe Graphlyte::Parser do
               Graphlyte::Syntax::Field.new(
                 as: nil,
                 name: 'foo',
-                arguments: nil,
+                arguments: [],
                 directives: [],
-                selection: nil
+                selection: []
               )
             ]
           )
         ]
       )
 
-      expect(q).to eq expected
+      expect(q).to be_equivalent_to(
+        Graphlyte::Document.new(definitions: [expected])
+      )
     end
   end
 

@@ -5,6 +5,9 @@ require_relative './data'
 
 module Graphlyte
   module Syntax
+    # An operation represents a top-level executable definition of
+    # a query, mutation or a subscription.
+    # See: https://spec.graphql.org/October2021/#sec-Language.Operations
     class Operation < Graphlyte::Data
       attr_reader :type
       attr_accessor :name, :variables, :directives, :selection
@@ -28,13 +31,15 @@ module Graphlyte
 
       def type=(value)
         @type = value
-        unless valid_type?
-          raise IllegalValue,
-                "Illegal value: #{value.inspect}. Expected query, mutation or subscription"
-        end
+        return if valid_type?
+
+        raise IllegalValue,
+              "Illegal value: #{value.inspect}. Expected query, mutation or subscription"
       end
     end
 
+    # An argument to a Field
+    # See: https://spec.graphql.org/October2021/#sec-Language.Arguments
     class Argument < Graphlyte::Data
       attr_accessor :name, :value
 
@@ -47,6 +52,7 @@ module Graphlyte
 
     Directive = Struct.new(:name, :arguments)
 
+    # Clases that have fragment names may include this module
     module HasFragmentName
       def self.included(mod)
         mod.attr_reader :name
@@ -59,21 +65,28 @@ module Graphlyte
       end
     end
 
+    # A discrete piece of information in the Graph
+    # See: https://spec.graphql.org/October2021/#sec-Language.Fields
     class Field < Graphlyte::Data
       attr_accessor :as, :name, :arguments, :directives, :selection
       # type is special: it is not part of the serialized Query, but
       # inferred from the schema. See: editors/annotate_types.rb
       attr_accessor :type
 
-      def simple?
-        as.nil? && arguments.empty? && Array(directives).empty? && Array(selection).empty?
+      def initialize(**kwargs)
+        super
+        @arguments ||= []
+        @directives ||= []
+        @selection ||= []
       end
 
-      def arguments
-        @arguments ||= []
+      def simple?
+        as.nil? && arguments.empty? && directives.empty? && selection.empty?
       end
     end
 
+    # A reference to the use of a Fragment
+    # See: https://spec.graphql.org/October2021/#FragmentSpread
     class FragmentSpread < Graphlyte::Data
       include HasFragmentName
 
@@ -90,6 +103,8 @@ module Graphlyte
       end
     end
 
+    # A definition of a re-usable chunk of an operation
+    # See: https://spec.graphql.org/October2021/#sec-Language.Fragments
     class Fragment < Graphlyte::Data
       include HasFragmentName
 
@@ -117,20 +132,15 @@ module Graphlyte
       end
     end
 
-    # TODO: unify with Schema?
-    class TypeSystemDefinition
-      def executable?
-        false
-      end
-    end
-
-    Literal = Struct.new(:value, :type, :to_s)
+    Literal = Struct.new(:value, :type, :to_s) # rubocop:disable Lint/StructNewOverride
     NULL = Literal.new(nil, :NULL, 'null').freeze
     TRUE = Literal.new(true, :BOOL, 'true').freeze
     FALSE = Literal.new(false, :BOOL, 'false').freeze
 
     VariableDefinition = Struct.new(:variable, :type, :default_value, :directives, keyword_init: true)
 
+    # A use of a variable in an operation or fragment
+    # See: https://spec.graphql.org/October2021/#Variable
     class VariableReference < Graphlyte::Data
       attr_accessor :variable, :inferred_type
 
@@ -144,11 +154,15 @@ module Graphlyte
         "$#{variable}"
       end
 
-      private def state
+      private
+
+      def state
         @variable
       end
     end
 
+    # A reference to a type, possibly containing other types.
+    # See: https://spec.graphql.org/October2021/#sec-Type-References
     class Type < Graphlyte::Data
       attr_accessor :inner, :is_list, :non_null
 
@@ -157,13 +171,6 @@ module Graphlyte
         @inner ||= name
         @is_list ||= false
         @non_null ||= false
-      end
-
-      # Used during value->type inference
-      def self.non_null(inner)
-        t = new(inner)
-        t.non_null = true
-        t
       end
 
       # Used during value->type inference
@@ -192,31 +199,36 @@ module Graphlyte
       def self.from_type_ref(type_ref)
         raise ArgumentError, 'type_ref cannot be nil' if type_ref.nil?
 
-        type = new
         inner = from_type_ref(type_ref.of_type) if type_ref.of_type
 
         case type_ref.kind
         when :NON_NULL
-          raise ArgumentError, "#{type_ref.kind} must have inner type" unless inner
-
-          type.non_null = true
-          if inner.is_list
-            type.is_list = true
-            type.inner = inner.inner
-          else
-            type.inner = inner
-          end
+          non_null(inner)
         when :LIST
-          raise ArgumentError, "#{type_ref.kind} must have inner type" unless inner
-
-          type.is_list = true
-          type.inner = inner
+          list_type(inner)
         when :SCALAR, :OBJECT, :ENUM
           raise ArgumentError, "#{type_ref.kind} cannot have inner type" if inner
 
-          type.inner = type_ref.name
+          new(inner: type_ref.name)
         else
           raise ArgumentError, "Unexpected kind: #{type_ref.kind.inspect}"
+        end
+      end
+
+      def self.list_type(inner)
+        raise ArgumentError, 'List types must have inner type' unless inner
+
+        new(is_list: true, inner: inner)
+      end
+
+      def self.non_null(inner)
+        raise ArgumentError, 'Non null types must have inner type' unless inner
+
+        type = new(non_null: true, inner: inner)
+
+        if inner.respond_to?(:is_list) && inner.is_list
+          type.is_list = true
+          type.inner = inner.inner
         end
 
         type

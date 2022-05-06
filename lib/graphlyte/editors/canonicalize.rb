@@ -6,6 +6,7 @@ require_relative './inline_fragments'
 
 module Graphlyte
   module Editors
+    # Reduce the query to a canonical form.
     class Canonicalize
       def edit(doc)
         doc = doc.dup

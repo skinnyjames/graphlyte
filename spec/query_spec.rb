@@ -121,21 +121,21 @@ describe Graphlyte do
   end
 
   it 'should support buik queries' do
-    query_1 = Graphlyte.query('FR') do |b|
-      b.bulk(id: 1) do |b|
+    query1 = Graphlyte.query('FR') do
+      bulk(id: 1) do |b|
         b.bon
         b.mal
       end
     end
 
-    query_2 = Graphlyte.query('DE') do |b|
-      b.bulk(id: 2) do |b|
+    query2 = Graphlyte.query('DE') do
+      bulk(id: 2) do |b|
         b.gut
         b.schlecht
       end
     end
 
-    expect(query_1 + query_2).to produce_equivalent_document(<<~STRING)
+    expect(query1 + query2).to produce_equivalent_document(<<~STRING)
       query FR {
         bulk(id: 1) {
           bon mal
