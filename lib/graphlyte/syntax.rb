@@ -151,10 +151,6 @@ module Graphlyte
         @inferred_type ||= inferred_type
       end
 
-      def serialize
-        "$#{variable}"
-      end
-
       private
 
       def state
@@ -296,16 +292,6 @@ module Graphlyte
 
       def number?
         type == :NUMBER
-      end
-
-      def serialize
-        case value
-        when String
-          # TODO: handle block strings?
-          "\"#{value.gsub(/"/, '\"').gsub("\n", '\n').gsub("\t", '\t')}\""
-        else
-          value.to_s
-        end
       end
 
       def self.from_ruby(object)
