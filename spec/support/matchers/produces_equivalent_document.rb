@@ -41,6 +41,8 @@ class DocDiff
     @differences
   end
 
+  private
+
   def diff_operation(name)
     actual = @actual.operations[name]
     expected = @expected.operations[name]
@@ -128,9 +130,11 @@ class DocDiff
     diff_selection(path, expected, actual)
   end
 
-  def diff_inline_fragment(path, _expected, _actual)
+  def diff_inline_fragment(path, expected, actual)
     path += [:inline_fragment]
-    # TODO
+    diff_attr(:type_name, path, expected, actual)
+    diff_directives(path, expected, actual)
+    diff_selection(path, expected, actual)
   end
 
   def diff_arguments(path, expected, actual)
@@ -152,23 +156,27 @@ class DocDiff
   end
 
   def diff_non_ordered_collection(key, path, expected, actual)
-    expected = expected.to_h { [_1.send(key), _1] }
-    actual = actual.to_h { [_1.send(key), _1] }
+    expected = index_on(key, expected)
+    actual = index_on(key, actual)
 
-    return if expected == actual
-
-    all_names = (expected.keys + actual.keys).to_set
-
-    all_names.each do |name|
-      p = path + [name]
-      if expected[name] && actual[name]
-        yield(p, expected[name], actual[name])
-      elsif expected[name]
-        @differences << Entry.new(p, 'Only in expected')
+    diff_merge(expected, actual).each do |name, (e, a)|
+      if e && a
+        yield(path + [name], e, a)
       else
-        @differences << Entry.new(p, 'Only in actual')
+        @differences << Entry.new(path + [name], e ? 'Only in expected' : 'Only in actual')
       end
     end
+  end
+
+  # Merge two hashes, so each value is a two-tuple `[left[key], right[key]]`
+  def diff_merge(left, right)
+    lefts = left.transform_values { [_1, nil] }
+    rights = right.transform_values { [nil, _1] }
+    lefts.merge(rights) { |_k, l, r| [l.first, r.last] }
+  end
+
+  def index_on(key, collection)
+    collection.to_h { [_1.send(key), _1] }
   end
 end
 
