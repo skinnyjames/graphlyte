@@ -151,7 +151,7 @@ module Graphlyte
           when Symbol
             field.directives << Syntax::Directive.new(arg.to_s)
           else
-            field.selection += self.class.build(@document) { select! arg }
+            field.selection += self.class.build(@document, scope: @scope.clone) { select! arg }
           end
         end
 
@@ -160,7 +160,7 @@ module Graphlyte
         end
 
         if block_given?
-          field.selection += self.class.build(@document, &block)
+          field.selection += self.class.build(@document, scope: @scope.clone, &block)
         end
 
         @selection << field
