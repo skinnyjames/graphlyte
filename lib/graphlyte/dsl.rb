@@ -23,34 +23,45 @@ module Graphlyte
       Syntax::Value.new(value.to_sym, :ENUM)
     end
 
-    def query(name = nil, doc = Document.new, &block)
-      op = Syntax::Operation.new(type: :query)
-      doc.define(op)
-
-      op.name = name
-      op.selection = SelectionBuilder.build(doc, &block)
+    def query(
+      name = nil,
+      op: Syntax::Operation.new(name: name, type: :query),
+      doc: Document.new(definitions: [op]),
+      builder: SelectionBuilder,
+      scope: nil,
+      &block
+    )
+      op.selection = builder.build(doc, scope: scope, &block)
 
       Editors::InferSignature.new(@schema).edit(doc)
-
       doc
     end
 
-    def mutation(name = nil, doc = Document.new, &block)
-      op = Syntax::Operation.new(type: :mutation)
-      doc.define(op)
-
-      op.name = name
-      op.selection = SelectionBuilder.build(doc, &block)
+    def mutation(
+      name = nil,
+      op = Syntax::Operation.new(name: name, type: :mutation),
+      doc = Document.new(definitions: [op]),
+      builder: SelectionBuilder,
+      scope: nil,
+      &block
+    )
+      op.selection = builder.build(doc, scope: scope, &block)
 
       # TODO: infer operation signatures (requires schema!)
       doc
     end
 
-    def fragment(fragment_name = nil, doc = Document.new, on:, &block)
-      frag = Graphlyte::Syntax::Fragment.new
+    def fragment(
+      fragment_name = nil,
+      doc = Document.new,
+      on:,
+      scope: nil,
+      builder: SelectionBuilder,
+      frag: Graphlyte::Syntax::Fragment.new(type_name: on),
+      &block
+    )
 
-      frag.type_name = on
-      frag.selection = SelectionBuilder.build(doc, &block)
+      frag.selection = builder.build(doc, scope: scope, &block)
 
       if fragment_name
         frag.name = fragment_name

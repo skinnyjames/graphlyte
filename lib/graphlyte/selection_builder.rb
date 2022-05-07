@@ -2,6 +2,7 @@
 
 require_relative './syntax'
 require_relative './refinements/string_refinement'
+require_relative './interface'
 
 module Graphlyte
   class ArgumentBuilder
@@ -89,12 +90,14 @@ module Graphlyte
     # Variables should not be re-used between queries
     Variable = Struct.new(:type, :name, keyword_init: true)
 
-    def self.build(document, &block)
-      new(document).build!(&block)
+    def self.build(document, scope: nil, &block)
+      new(document, scope: scope).build!(&block)
     end
 
-    def initialize(document)
+    def initialize(document, scope: nil)
       @document = document
+      @scope = scope || self
+      @scope.register(self) if scope.is_a?(Graphlyte::Interface)
     end
 
     def build!(&block)
@@ -102,7 +105,7 @@ module Graphlyte
       curr = []
 
       @selection = curr
-      instance_eval(&block)
+      @scope.instance_eval &block
 
       return curr
     ensure
