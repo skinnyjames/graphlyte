@@ -102,7 +102,8 @@ module Graphlyte
       curr = []
 
       @selection = curr
-      instance_eval(&block)
+      outer = eval('self', block.binding)
+      instance_exec outer, &block
 
       return curr
     ensure

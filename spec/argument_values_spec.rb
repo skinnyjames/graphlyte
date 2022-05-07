@@ -50,9 +50,9 @@ describe Graphlyte do
   end
 
   it "should support floats" do 
-    query = Graphlyte.query do |q|
-      q.arguments(float: 1.01) do |i|
-        i.id
+    query = Graphlyte.query do
+      arguments(float: 1.01) do
+        id
       end
     end
 
@@ -66,9 +66,9 @@ describe Graphlyte do
   end
 
   it "should support exponentiation" do 
-    query = Graphlyte.query do |q|
-      q.arguments(big: 1_000_000) do |i|
-        i.id
+    query = Graphlyte.query do
+      arguments(big: 1_000_000) do
+        id
       end
     end
 
@@ -82,9 +82,9 @@ describe Graphlyte do
   end
 
   it "should support exponentiation, negative" do 
-    query = Graphlyte.query do |q|
-      q.arguments(small: 0.000001) do |i|
-        i.id
+    query = Graphlyte.query do
+      arguments(small: 0.000001) do
+        id
       end
     end
 
@@ -98,8 +98,8 @@ describe Graphlyte do
   end
 
   it "should support strings" do 
-    query = Graphlyte.query do |q|
-      q.arguments(string: "hello")
+    query = Graphlyte.query do
+      arguments(string: "hello")
     end
     expect(query).to produce_equivalent_document(<<~STRING)
     {
@@ -109,8 +109,8 @@ describe Graphlyte do
   end
 
   it "should support lists" do 
-    query = Graphlyte.query do |q|
-      q.arguments(list: [1, 2])
+    query = Graphlyte.query do
+      arguments(list: [1, 2])
     end
 
     expect(query).to produce_equivalent_document(<<~STRING)

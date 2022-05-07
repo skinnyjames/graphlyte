@@ -97,17 +97,17 @@ describe Graphlyte do
   end
 
   it "should support buik queries" do 
-    query_1 = Graphlyte.query('FR') do |b|
-      b.bulk(id: 1) do |b|
-        b.bon
-        b.mal
+    query_1 = Graphlyte.query('FR') do
+      bulk(id: 1) do |b|
+        bon
+        mal
       end
     end
 
-    query_2 = Graphlyte.query('DE') do |b|
-      b.bulk(id: 2) do |b|
-        b.gut
-        b.schlecht
+    query_2 = Graphlyte.query('DE') do
+      bulk(id: 2) do |b|
+        gut
+        schlecht
       end
     end
 
@@ -124,5 +124,29 @@ describe Graphlyte do
         }
       }
     STRING
+  end
+
+  context 'query scoping' do
+    let(:fragment) do
+      Graphlyte.fragment(on: 'User') { id }
+    end
+
+    it 'should provide an escape hatch to outer scope as a block parameter' do
+      query = Graphlyte.query do |outer|
+        user outer.fragment
+      end
+
+      expect(query).to produce_equivalent_document(<<~STRING)
+        query { 
+          user {
+            ...UserFields
+          }
+        }
+
+        fragment UserFields on User {
+          id
+        }
+      STRING
+    end
   end
 end

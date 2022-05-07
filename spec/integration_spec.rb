@@ -2,9 +2,9 @@ require "json"
 
 describe Graphlyte, :requests, :mocks do
   it "should perform a basic query" do
-    query = Graphlyte.query do |q|
-      q.allTodos do |t|
-        t.id
+    query = Graphlyte.query do
+      allTodos do
+        id
       end
     end
 
@@ -15,12 +15,12 @@ describe Graphlyte, :requests, :mocks do
   end
 
   it "should support fragments" do 
-    todo = Graphlyte.fragment("todoFields", on: "Todo") do |f|
-      f.title
+    todo = Graphlyte.fragment("todoFields", on: "Todo") do
+      title
     end
 
-    query = Graphlyte.query do |q|
-      q.allTodos todo
+    query = Graphlyte.query do
+      allTodos todo
     end
 
     expected = mock_response("todo").map {|t| { "title" => t["title"] } }
@@ -30,18 +30,18 @@ describe Graphlyte, :requests, :mocks do
   end
 
   it "should support nested fragments" do 
-    extra_fields = Graphlyte.fragment('extraFields', on: "Todo") do |f|
-      f.id
-      f.status
+    extra_fields = Graphlyte.fragment('extraFields', on: "Todo") do
+      id
+      status
     end
 
-    todo = Graphlyte.fragment('todoFields', on: "Todo") do |f|
-      f.title
-      f << extra_fields
+    todo = Graphlyte.fragment('todoFields', on: "Todo") do
+      title
+      self << extra_fields
     end
 
     query = Graphlyte.query do |q|
-      q.allTodos todo
+      allTodos todo
     end
 
     expected = mock_response("todo").map do |t|
@@ -145,12 +145,12 @@ describe Graphlyte, :requests, :mocks do
       end
     end
 
-    query = Graphlyte.query do |f|
+    query = Graphlyte.query do
       all_todos(filter: todo_filter) do
         status
         title
       end
-      f << fragment
+      self << fragment
     end
 
     expected = {"allTodos"=>[{"status"=>"open", "title"=>"Sic Dolor amet"}], "User"=>{"name"=>"John Doe"}}
