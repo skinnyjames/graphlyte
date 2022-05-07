@@ -46,7 +46,7 @@ module Graphlyte
       doc
     end
 
-    def fragment(fragment_name = nil, doc = Document.new, on:, &block)
+    def fragment(fragment_name = nil, on:, doc: Document.new, &block)
       frag = Graphlyte::Syntax::Fragment.new
 
       frag.type_name = on
@@ -68,6 +68,8 @@ module Graphlyte
       doc.fragments.each_value do |required|
         frag.refers_to required
       end
+
+      doc.define(frag)
 
       frag
     end

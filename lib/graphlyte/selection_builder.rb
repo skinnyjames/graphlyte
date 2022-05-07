@@ -141,6 +141,8 @@ module Graphlyte
           case arg
           when Symbol
             field.directives << Syntax::Directive.new(arg.to_s)
+          when WithField
+            raise ArgumentError, 'Reference error'
           else
             field.selection += self.class.build(@document) { select! arg }
           end

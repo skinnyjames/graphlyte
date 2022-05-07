@@ -5,6 +5,8 @@ Metrics/ClassLength:
   Max: 200
 Metrics/MethodLength:
   Max: 15
+  IgnoredMethods:
+    - schema_query
 Metrics/BlockLength:
   IgnoredMethods:
     - describe
