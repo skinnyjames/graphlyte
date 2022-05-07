@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 Gem::Specification.new do |s|
-  s.required_ruby_version = '2.7'
+  s.required_ruby_version = '>= 2.7.0'
   s.name        = 'graphlyte'
   s.version     = '0.3.2'
   s.licenses    = ['MIT']
