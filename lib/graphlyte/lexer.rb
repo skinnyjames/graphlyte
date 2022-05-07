@@ -2,6 +2,9 @@
 
 require 'forwardable'
 
+require_relative './lexing/token'
+require_relative './lexing/location'
+
 # See: https://github.com/graphql/graphql-spec/blob/main/spec/Appendix%20B%20--%20Grammar%20Summary.md
 #
 # This module implements tokenization of
@@ -15,6 +18,16 @@ require 'forwardable'
 module Graphlyte
   LexError = Class.new(StandardError)
 
+  # A terminal production. May or may not produce a lexical token.
+  class Production
+    attr_reader :token
+
+    def initialize(token)
+      @token = token
+    end
+  end
+
+  # Transform a string into a stream of tokens - i.e. lexing
   class Lexer
     LINEFEED = "\u000a"
     CARRIAGE_RETURN = "\u000d"
@@ -39,66 +52,6 @@ module Graphlyte
 
     DIGITS = %w[0 1 2 3 4 5 6 7 8 9].freeze
 
-    Position = Struct.new(:line, :col) do
-      def to_s
-        "#{line}:#{col}"
-      end
-    end
-
-    class Location
-      attr_reader :start_pos, :end_pos
-
-      def initialize(start_pos, end_pos)
-        @start_pos = start_pos
-        @end_pos = end_pos
-      end
-
-      def to(location)
-        self.class.new(start_pos, location.end_pos)
-      end
-
-      def self.eof
-        new(nil, nil)
-      end
-
-      def eof?
-        start_pos.nil?
-      end
-
-      def ==(other)
-        other.is_a?(self.class) && to_s == other.to_s
-      end
-
-      def to_s
-        return 'EOF' if eof?
-
-        "#{start_pos}-#{end_pos}"
-      end
-    end
-
-    class Token
-      extend Forwardable
-
-      attr_reader :type, :lexeme, :location
-
-      def_delegators :@location, :line, :col, :length
-
-      def initialize(type, lexeme, location, value: nil)
-        @type = type
-        @lexeme = lexeme
-        @value = value
-        @location = location
-      end
-
-      def value
-        @value || @lexeme
-      end
-
-      def punctator?(value)
-        @type == :PUNCTATOR && @lexeme == value
-      end
-    end
-
     attr_reader :source, :tokens
     attr_accessor :line, :column, :index, :lexeme_start_p
 
@@ -108,7 +61,7 @@ module Graphlyte
       @line = 1
       @column = 1
       @index = 0
-      @lexeme_start_p = Position.new(0, 0)
+      @lexeme_start_p = Lexing::Position.new(0, 0)
     end
 
     def self.lex(source)
@@ -127,13 +80,13 @@ module Graphlyte
         tokens << token if token
       end
 
-      tokens << Token.new(:EOF, nil, after_source_end_location)
+      tokens << Lexing::Token.new(:EOF, nil, after_source_end_location)
     end
 
     private
 
     def after_source_end_location
-      Location.eof
+      Lexing::Location.eof
     end
 
     def source_uncompleted?
@@ -169,7 +122,7 @@ module Graphlyte
       nil
     end
 
-    def string(_c)
+    def string
       if lookahead == DOUBLE_QUOTE && lookahead(2) != DOUBLE_QUOTE
         consume
         '' # The empty string
@@ -182,7 +135,7 @@ module Graphlyte
 
     def string_content
       chars = []
-      while char = string_character
+      while (char = string_character)
         chars << char
       end
 
@@ -218,29 +171,32 @@ module Graphlyte
       when 'n' then LINEFEED
       when 'r' then "\r"
       when 't' then "\t"
-      when 'u'
-        char_code = [1, 2, 3, 4].map do
-          d = consume
-          hex_digit = (digit?(d) || ('a'...'f').cover?(d.downcase))
-          lex_error("Expected a hex digit in unicode escape sequence. Got #{d.inspect}") unless hex_digit
-
-          d
-        end
-
-        char_code.join.hex.chr
+      when 'u' then hex_char
       else
         lex_error("Unexpected escaped character in string: #{c}")
       end
+    end
+
+    def hex_char
+      char_code = [1, 2, 3, 4].map do
+        d = consume
+        hex_digit = (digit?(d) || ('a'...'f').cover?(d.downcase))
+        lex_error("Expected a hex digit in unicode escape sequence. Got #{d.inspect}") unless hex_digit
+
+        d
+      end
+
+      char_code.join.hex.chr
     end
 
     def block_string_content
       chars = []
       terminated = false
 
-      until eof? || terminated = consume(BLOCK_QUOTE)
+      until eof? || (terminated = consume(BLOCK_QUOTE))
         chars << BLOCK_QUOTE if consume("\\#{BLOCK_QUOTE}")
         chars << '"' while consume(DOUBLE_QUOTE)
-        while char = string_character(block_string: true)
+        while (char = string_character(block_string: true))
           chars << char
         end
       end
@@ -266,8 +222,8 @@ module Graphlyte
       chars
     end
 
-    def seek(n)
-      self.index += n
+    def seek(offset)
+      self.index += offset
     end
 
     def consume(str = nil)
@@ -281,49 +237,67 @@ module Graphlyte
     end
 
     def current_location
-      Location.new(lexeme_start_p, current_position)
+      Lexing::Location.new(lexeme_start_p, current_position)
     end
 
     def current_position
-      Position.new(line, column)
+      Lexing::Position.new(line, column)
     end
 
     def next_token
-      if punctator = one_of(PUNCTATOR)
-        return Token.new(:PUNCTATOR, punctator, current_location)
-      end
+      (punctator || skip_line || lexical_token).token
+    end
 
-      if lf = one_of([LINEFEED, "#{CARRIAGE_RETURN}#{LINEFEED}"])
-        self.line += 1
-        self.column = 1
+    def punctator
+      p = one_of(PUNCTATOR)
 
-        return
-      end
+      Production.new(Lexing::Token.new(:PUNCTATOR, p, current_location)) if p
+    end
 
+    def skip_line
+      lf = one_of([LINEFEED, "#{CARRIAGE_RETURN}#{LINEFEED}"])
+      return unless lf
+
+      next_line!
+      Production.new(nil)
+    end
+
+    def lexical_token
       c = consume
+      t = if IGNORED.include?(c)
+            nil
+          elsif c == COMMENT_CHAR
+            ignore_comment_line
+          elsif name_start?(c)
+            to_token(:NAME)   { name(c)   }
+          elsif string_start?(c)
+            to_token(:STRING) { string    }
+          elsif numeric_start?(c)
+            to_token(:NUMBER) { number(c) }
+          else
+            lex_error("Unexpected character: #{c.inspect}")
+          end
 
-      return if IGNORED.include?(c)
-      return ignore_comment_line if c == COMMENT_CHAR
-
-      return to_token(:NAME)   { name(c)   } if name_start?(c)
-      return to_token(:STRING) { string(c) } if string_start?(c)
-      return to_token(:NUMBER) { number(c) } if numeric_start?(c)
-
-      lex_error("Unexpected character: #{c.inspect}")
+      Production.new(t)
     end
 
-    def string_start?(c)
-      c == '"'
+    def next_line!
+      self.line += 1
+      self.column = 1
     end
 
-    def numeric_start?(c)
-      case c
+    def string_start?(char)
+      char == '"'
+    end
+
+    def numeric_start?(char)
+      case char
       when '-'
         DIGITS.include?(lookahead)
       when '0'
         !DIGITS.include?(lookahead)
       else
-        c != '0' && DIGITS.include?(c)
+        char != '0' && DIGITS.include?(char)
       end
     end
 
@@ -332,7 +306,7 @@ module Graphlyte
       value = yield
       j = index
 
-      Token.new(type, source[i..j], current_location, value: value)
+      Lexing::Token.new(type, source[i..j], current_location, value: value)
     end
 
     def number(char)
@@ -369,30 +343,30 @@ module Graphlyte
       [sign, digits.join]
     end
 
-    def name(c)
-      value = [c] + take_while { name_continue?(_1) }
+    def name(char)
+      value = [char] + take_while { name_continue?(_1) }
 
       value.join
     end
 
-    def name_start?(c)
-      letter?(c) || underscore?(c)
+    def name_start?(char)
+      letter?(char) || underscore?(char)
     end
 
-    def name_continue?(c)
-      letter?(c) || digit?(c) || underscore?(c)
+    def name_continue?(char)
+      letter?(char) || digit?(char) || underscore?(char)
     end
 
-    def letter?(c)
-      LETTERS.include?(c)
+    def letter?(char)
+      LETTERS.include?(char)
     end
 
-    def underscore?(c)
-      c == '_'
+    def underscore?(char)
+      char == '_'
     end
 
-    def digit?(c)
-      DIGITS.include?(c)
+    def digit?(char)
+      DIGITS.include?(char)
     end
 
     def ignore_comment_line
