@@ -28,7 +28,9 @@ module Graphlyte
       doc.define(op)
 
       op.name = name
-      op.selection = SelectionBuilder.build(doc, &block)
+
+      outer = eval('self', block.binding)
+      op.selection = SelectionBuilder.build(doc, outer: outer, &block)
 
       Editors::InferSignature.new(@schema).edit(doc)
 
@@ -40,7 +42,9 @@ module Graphlyte
       doc.define(op)
 
       op.name = name
-      op.selection = SelectionBuilder.build(doc, &block)
+
+      outer = eval('self', block.binding)
+      op.selection = SelectionBuilder.build(doc, outer: outer, &block)
 
       # TODO: infer operation signatures (requires schema!)
       doc
@@ -50,7 +54,9 @@ module Graphlyte
       frag = Graphlyte::Syntax::Fragment.new
 
       frag.type_name = on
-      frag.selection = SelectionBuilder.build(doc, &block)
+
+      outer = eval('self', block.binding)
+      frag.selection = SelectionBuilder.build(doc, outer: outer, &block)
 
       if fragment_name
         frag.name = fragment_name

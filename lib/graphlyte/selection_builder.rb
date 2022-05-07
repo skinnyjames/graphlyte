@@ -89,20 +89,19 @@ module Graphlyte
     # Variables should not be re-used between queries
     Variable = Struct.new(:type, :name, keyword_init: true)
 
-    def self.build(document, &block)
-      new(document).build!(&block)
+    def self.build(document, outer: self, &block)
+      new(document).build!(outer: outer, &block)
     end
 
     def initialize(document)
       @document = document
     end
 
-    def build!(&block)
+    def build!(outer: self, &block)
       old = @selection
       curr = []
 
       @selection = curr
-      outer = eval('self', block.binding)
       instance_exec outer, &block
 
       return curr
