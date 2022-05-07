@@ -55,7 +55,7 @@ module Graphlyte
       self
     end
 
-    def respond_to_missing
+    def respond_to_missing?(*)
       true
     end
   end
@@ -94,9 +94,14 @@ module Graphlyte
     def build!(&block)
       old = @selection
       curr = []
+      return curr unless block_given?
 
       @selection = curr
-      instance_eval(&block)
+      if block.parameters && !block.parameters.empty?
+        yield self
+      else
+        instance_eval(&block)
+      end
 
       curr
     ensure
@@ -142,7 +147,7 @@ module Graphlyte
           when Symbol
             field.directives << Syntax::Directive.new(arg.to_s)
           when WithField
-            raise ArgumentError, 'Reference error'
+            raise ArgumentError, 'Reference error' # caused by typos usually.
           else
             field.selection += self.class.build(@document) { select! arg }
           end

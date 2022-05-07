@@ -14,11 +14,24 @@ describe Graphlyte, :requests, :mocks do
     expect(response).to eql(expected)
   end
 
-  it 'should support fragments' do
+  it 'should support fragments, argument syntax' do
     todo = Graphlyte.fragment('todoFields', on: 'Todo', &:title)
 
-    query = Graphlyte.query do |q|
-      q.allTodos todo
+    query = Graphlyte.query do
+      allTodos todo
+    end
+
+    expected = mock_response('todo').map { |t| { 'title' => t['title'] } }
+    response = request(query).dig('data', 'allTodos')
+
+    expect(response).to eql(expected)
+  end
+
+  it 'should support fragments, << syntax' do
+    todo = Graphlyte.fragment('todoFields', on: 'Todo', &:title)
+
+    query = Graphlyte.query do
+      allTodos { |todos| todos << todo }
     end
 
     expected = mock_response('todo').map { |t| { 'title' => t['title'] } }
@@ -143,12 +156,12 @@ describe Graphlyte, :requests, :mocks do
       end
     end
 
-    query = Graphlyte.query do |f|
+    query = Graphlyte.query do
       all_todos(filter: todo_filter) do
         status
         title
       end
-      f << fragment
+      self << fragment
     end
 
     expected = { 'allTodos' => [{ 'status' => 'open', 'title' => 'Sic Dolor amet' }],
