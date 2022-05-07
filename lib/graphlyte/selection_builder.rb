@@ -145,13 +145,14 @@ module Graphlyte
       else
         name = selected.to_s
         field = Syntax::Field.new(name: name, as: as, directives: [], selection: [])
+        scope = @scope.is_a?(Interface) ? @scope.clone : scope
 
         args.each do |arg|
           case arg
           when Symbol
             field.directives << Syntax::Directive.new(arg.to_s)
           else
-            field.selection += self.class.build(@document, scope: @scope.clone) { select! arg }
+            field.selection += self.class.build(@document, scope: scope) { select! arg }
           end
         end
 
@@ -160,7 +161,8 @@ module Graphlyte
         end
 
         if block_given?
-          field.selection += self.class.build(@document, scope: @scope.clone, &block)
+          scope = @scope.is_a?(Interface) ? @scope.clone : scope
+          field.selection += self.class.build(@document, scope: scope, &block)
         end
 
         @selection << field
