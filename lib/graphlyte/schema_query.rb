@@ -3,11 +3,13 @@
 require_relative './dsl'
 
 module Graphlyte
+  # extend this module to gain access to a schema_query method
   module SchemaQuery
     def schema_query
       SchemaQuery::Query.new.build
     end
 
+    # Builder for a schema query
     class Query
       attr_reader :dsl, :doc
 
@@ -17,54 +19,47 @@ module Graphlyte
       end
 
       def build
-        full_type = full_type_fragment
-        input_value = input_value_fragment
-
-        @build ||= dsl.query('Schema', doc) do
-          __schema do
-            query_type { name }
-            mutation_type { name }
-            subscription_type { name }
-            types(full_type)
-            directives do
-              name
-              description
-              args(input_value)
-            end
+        @build ||= dsl.query('Schema', doc) do |q|
+          q.__schema do |s|
+            s.query_type { name }
+            s.mutation_type { name }
+            s.subscription_type { name }
+            s.types(full_type_fragment)
+            query_directives(s)
           end
+        end
+      end
+
+      def query_directives(schema)
+        schema.directives do |d|
+          d.name
+          d.description
+          d.args(input_value_fragment)
         end
       end
 
       def type_ref_fragment
-        @type_ref_fragment ||= dsl.fragment(on: '__Type', doc: doc) do
-          depth = 0
-
-          select_type_reference = lambda do |node|
-            node.kind
-            node.name
-            depth += 1
-            node.of_type { select_type_reference[self] } if depth < 8
-          end
-
-          select_type_reference[self]
+        @type_ref_fragment ||= dsl.fragment(on: '__Type', doc: doc) do |t|
+          select_type_reference(t)
         end
       end
 
-      def full_type_fragment
-        type_ref = type_ref_fragment
-        input_value = input_value_fragment
-        fields = fields_fragment
-        enums = enums_fragment
+      def select_type_reference(node, depth: 0)
+        node.kind
+        node.name
+        node.of_type { |child| select_type_reference(child, depth: depth + 1) } if depth < 8
+      end
 
-        @full_type_fragment ||= dsl.fragment(on: '__Type', doc: doc) do
-          kind
-          name
-          description
-          self << fields
-          input_fields(input_value)
-          interfaces(type_ref)
-          self << enums
-          possible_types(type_ref)
+      def full_type_fragment
+        @full_type_fragment ||= dsl.fragment(on: '__Type', doc: doc) do |t|
+          t.kind
+          t.name
+          t.description
+          t << fields_fragment
+          t.input_fields(input_value_fragment)
+          t.interfaces(type_ref_fragment)
+          t << enums_fragment
+          t.possible_types(type_ref_fragment)
         end
       end
 
@@ -80,29 +75,24 @@ module Graphlyte
       end
 
       def fields_fragment
-        type_ref = type_ref_fragment
-        input_value = input_value_fragment
-
-        @fields_fragment ||= dsl.fragment(on: '__Type', doc: doc) do
-          fields(include_deprecated: true) do
-            name
-            description
-            args(input_value)
-            type(type_ref)
-            is_deprecated
-            deprecation_reason
+        @fields_fragment ||= dsl.fragment(on: '__Type', doc: doc) do |t|
+          t.fields(include_deprecated: true) do |f|
+            f.name
+            f.description
+            f.args(input_value_fragment)
+            f.type(type_ref_fragment)
+            f.is_deprecated
+            f.deprecation_reason
           end
         end
       end
 
       def input_value_fragment
-        type_ref = type_ref_fragment
-
-        @input_value_fragment ||= dsl.fragment(on: '__InputValue', doc: doc) do
-          name
-          description
-          type type_ref
-          default_value
+        @input_value_fragment ||= dsl.fragment(on: '__InputValue', doc: doc) do |v|
+          v.name
+          v.description
+          v.type type_ref_fragment
+          v.default_value
         end
       end
     end
