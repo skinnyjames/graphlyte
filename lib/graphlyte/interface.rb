@@ -4,7 +4,7 @@ require_relative './dsl'
 
 module Graphlyte
   class Interface < DSL
-    def initialize(*args)
+    def initialize(*)
       @builder = nil
       super(nil)
     end
@@ -14,19 +14,19 @@ module Graphlyte
     end
 
     def query(&block)
-      super(scope: self.clone, &block)
+      super(scope: clone, &block)
     end
 
     def mutation(&block)
-      super(scope: self.clone, &block)
+      super(scope: clone, &block)
     end
 
     def fragment(name = nil, on:, &block)
-      super(name, on: on, scope: self.clone, &block)
+      super(name, on: on, scope: clone, &block)
     end
 
-    private def method_missing(symbol, *args, &block)
-      @builder.send(symbol, *args, &block)
+    private def method_missing(symbol, *args, **kwargs, &block)
+      @builder.send(symbol, *args, **kwargs, &block)
     end
   end
 end
