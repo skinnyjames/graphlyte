@@ -71,35 +71,36 @@ class Mapper
   end
 end
 
-class Store
+class Store < Graphlyte::Interface
   def initialize(entity_class)
+    super
     @entity_class = entity_class
   end
 
   def load(id)
-    query = Graphlyte.query do |q|
-      select_entity(q, @entity_class, id: id).alias(:_)
+    q = query do
+      select_entity(@entity_class, id: id).alias(:_)
     end
 
-    data = Http.new.post(query)['_']
+    data = Http.new.post(q)['_']
 
     @entity_class.mapper.build_from(data)
   end
 
   private
 
-  def select_entity(node, entity_class, **args)
-    node.select!(entity_class.name, **args) do |child|
+  def select_entity(entity_class, **args)
+    select!(entity_class.name, **args) do
       entity_class.record_fields.each do |field|
         case field
         when Array
-          child.select!(field.last).alias(field.first)
+          select!(field.last).alias(field.first)
         else
-          child.select!(field)
+          select!(field)
         end
       end
       entity_class.connections.each do |name, klass|
-        select_entity(child, klass).alias(name)
+        select_entity(klass).alias(name)
       end
     end
   end
