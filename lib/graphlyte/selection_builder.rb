@@ -91,17 +91,14 @@ module Graphlyte
       @document = document
     end
 
-    def build!(&block)
+    def build!
       old = @selection
       curr = []
       return curr unless block_given?
 
       @selection = curr
-      if block.parameters && !block.parameters.empty?
-        yield self
-      else
-        instance_eval(&block)
-      end
+
+      yield self
 
       curr
     ensure
@@ -149,7 +146,7 @@ module Graphlyte
           when WithField
             raise ArgumentError, 'Reference error' # caused by typos usually.
           else
-            field.selection += self.class.build(@document) { select! arg }
+            field.selection += self.class.build(@document) { _1.select! arg }
           end
         end
 

@@ -21,9 +21,9 @@ module Graphlyte
       def build
         @build ||= dsl.query('Schema', doc) do |q|
           q.__schema do |s|
-            s.query_type { name }
-            s.mutation_type { name }
-            s.subscription_type { name }
+            s.query_type(&:name)
+            s.mutation_type(&:name)
+            s.subscription_type(&:name)
             s.types(full_type_fragment)
             query_directives(s)
           end
@@ -64,12 +64,12 @@ module Graphlyte
       end
 
       def enums_fragment
-        @enums_fragment ||= dsl.fragment(on: '__Type', doc: doc) do
-          enum_values(include_deprecated: true) do
-            name
-            description
-            is_deprecated
-            deprecation_reason
+        @enums_fragment ||= dsl.fragment(on: '__Type', doc: doc) do |t|
+          t.enum_values(include_deprecated: true) do |e|
+            e.name
+            e.description
+            e.is_deprecated
+            e.deprecation_reason
           end
         end
       end
