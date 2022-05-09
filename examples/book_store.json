@@ -1,0 +1,32 @@
+{
+  "books": [
+    {
+      "id": 12344,
+      "title": "When we were very young",
+      "published": "1924",
+      "author_id": 1
+    },
+    {
+      "id": 12345,
+      "title": "Winnie the Pooh",
+      "published": "1926",
+      "author_id": 1
+    },
+    {
+      "id": 12346,
+      "title": "The Art of War",
+      "published": "5th C. BCE",
+      "author_id": 2
+    }
+  ],
+  "authors": [
+    {
+      "id": 1,
+      "name": "A. A. Milne"
+    },
+    {
+      "id": 2,
+      "name": "Sun Tzu"
+    }
+  ]
+}
