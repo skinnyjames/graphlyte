@@ -6,6 +6,7 @@ require_relative './inline_fragments'
 
 module Graphlyte
   module Editors
+    # Reduce the query to a canonical form.
     class Canonicalize
       def edit(doc)
         doc = doc.dup
@@ -17,8 +18,8 @@ module Graphlyte
 
       def order_argments
         Editor.new
-          .on_field { |field| field.arguments = field.arguments&.sort_by(&:name) }
-          .on_directive { |dir| dir.arguments = dir.arguments&.sort_by(&:name) }
+              .on_field { |field| field.arguments = field.arguments&.sort_by(&:name) }
+              .on_directive { |dir| dir.arguments = dir.arguments&.sort_by(&:name) }
       end
     end
   end

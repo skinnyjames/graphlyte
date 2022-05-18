@@ -1,4 +1,6 @@
-describe Graphlyte do 
+# frozen_string_literal: true
+
+describe Graphlyte do
   it 'is possible to select fields that we cannot name in ruby' do
     query = Graphlyte.query do
       hero do
@@ -36,7 +38,24 @@ describe Graphlyte do
     STRING
   end
 
-  it 'should support directives' do
+  it 'supports aliases' do
+    query = Graphlyte.query do
+      hero(name: 'Jo').alias(:jo) do
+        name
+      end
+
+      self.bill = hero(name: 'Bill') { name }
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        jo: hero(name: "Jo") { name }
+        bill: hero(name: "Bill") { name }
+      }
+    STRING
+  end
+
+  it 'supports directives' do
     query = Graphlyte.query do
       hero(episode: :episode) do
         name
@@ -54,6 +73,28 @@ describe Graphlyte do
             name
           }
         }
+      }
+    STRING
+  end
+
+  it 'supports fragments' do
+    fragment = Graphlyte.fragment(on: 'Friends') { something }
+
+    query = Graphlyte.query do
+      hero(episode: :episode) do
+        self << fragment
+      end
+    end
+
+    expect(query).to produce_equivalent_document(<<~STRING)
+      {
+        hero(episode: $episode) {
+          ... FriendsFields
+        }
+      }
+
+      fragment FriendsFields on Friends {
+        something
       }
     STRING
   end
@@ -78,7 +119,7 @@ describe Graphlyte do
     STRING
   end
 
-  it "converts snake_case to camelCase" do
+  it 'converts snake_case to camelCase' do
     query = Graphlyte.query do
       snake_case_works
       __type_name
@@ -96,22 +137,22 @@ describe Graphlyte do
     STRING
   end
 
-  it "should support buik queries" do 
-    query_1 = Graphlyte.query('FR') do |b|
-      b.bulk(id: 1) do |b|
+  it 'should support buik queries' do
+    query1 = Graphlyte.query('FR') do
+      bulk(id: 1) do |b|
         b.bon
         b.mal
       end
     end
 
-    query_2 = Graphlyte.query('DE') do |b|
-      b.bulk(id: 2) do |b|
+    query2 = Graphlyte.query('DE') do
+      bulk(id: 2) do |b|
         b.gut
         b.schlecht
       end
     end
 
-    expect(query_1 + query_2).to produce_equivalent_document(<<~STRING)
+    expect(query1 + query2).to produce_equivalent_document(<<~STRING)
       query FR {
         bulk(id: 1) {
           bon mal

@@ -130,10 +130,8 @@ module Graphlyte
         field.is_deprecated = data['isDeprecated']
         field.deprecation_reason = data['deprecationReason']
 
-        if data['arguments']
-          data['arguments'].each do |arg_data|
-            field.arguments[arg_data['name']] = InputValue.from_schema_response(arg_data)
-          end
+        data['arguments']&.each do |arg_data|
+          field.arguments[arg_data['name']] = InputValue.from_schema_response(arg_data)
         end
 
         field

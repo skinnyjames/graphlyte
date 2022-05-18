@@ -95,7 +95,7 @@ module Graphlyte
 
         collect.edit(doc)
 
-        names_per_op.each do |op_name, spreads|
+        names_per_op.each do |_op_name, spreads|
           unvisited = spreads.to_a
 
           until unvisited.empty?

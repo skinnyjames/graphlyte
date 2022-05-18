@@ -1,41 +1,52 @@
-require "json"
+# frozen_string_literal: true
+
+require 'json'
 
 describe Graphlyte, :requests, :mocks do
-  it "should perform a basic query" do
+  it 'should perform a basic query' do
     query = Graphlyte.query do |q|
-      q.allTodos do |t|
-        t.id
-      end
+      q.allTodos(&:id)
     end
 
-    expected = mock_response("todo").map { |t| { "id" => t['id'].to_s } }
+    expected = mock_response('todo').map { |t| { 'id' => t['id'].to_s } }
     response = request(query).dig('data', 'allTodos')
 
     expect(response).to eql(expected)
   end
 
-  it "should support fragments" do 
-    todo = Graphlyte.fragment("todoFields", on: "Todo") do |f|
-      f.title
+  it 'should support fragments, argument syntax' do
+    todo = Graphlyte.fragment('todoFields', on: 'Todo', &:title)
+
+    query = Graphlyte.query do
+      allTodos todo
     end
 
-    query = Graphlyte.query do |q|
-      q.allTodos todo
-    end
-
-    expected = mock_response("todo").map {|t| { "title" => t["title"] } }
+    expected = mock_response('todo').map { |t| { 'title' => t['title'] } }
     response = request(query).dig('data', 'allTodos')
 
     expect(response).to eql(expected)
   end
 
-  it "should support nested fragments" do 
-    extra_fields = Graphlyte.fragment('extraFields', on: "Todo") do |f|
+  it 'should support fragments, << syntax' do
+    todo = Graphlyte.fragment('todoFields', on: 'Todo', &:title)
+
+    query = Graphlyte.query do
+      allTodos { |todos| todos << todo }
+    end
+
+    expected = mock_response('todo').map { |t| { 'title' => t['title'] } }
+    response = request(query).dig('data', 'allTodos')
+
+    expect(response).to eql(expected)
+  end
+
+  it 'should support nested fragments' do
+    extra_fields = Graphlyte.fragment('extraFields', on: 'Todo') do |f|
       f.id
       f.status
     end
 
-    todo = Graphlyte.fragment('todoFields', on: "Todo") do |f|
+    todo = Graphlyte.fragment('todoFields', on: 'Todo') do |f|
       f.title
       f << extra_fields
     end
@@ -44,11 +55,11 @@ describe Graphlyte, :requests, :mocks do
       q.allTodos todo
     end
 
-    expected = mock_response("todo").map do |t|
-      { 
-        "title" => t["title"],
-        "id" => t["id"].to_s,
-        "status" => t["status"]
+    expected = mock_response('todo').map do |t|
+      {
+        'title' => t['title'],
+        'id' => t['id'].to_s,
+        'status' => t['status']
       }
     end
     response = request(query).dig('data', 'allTodos')
@@ -56,7 +67,7 @@ describe Graphlyte, :requests, :mocks do
     expect(response).to eql(expected)
   end
 
-  it "should support parsing fragments" do
+  it 'should support parsing fragments' do
     query = Graphlyte.parse(<<~GQL)
       query todos {
         allTodos {
@@ -75,11 +86,11 @@ describe Graphlyte, :requests, :mocks do
       }
     GQL
 
-    expected = mock_response("todo").map do |t|
+    expected = mock_response('todo').map do |t|
       {
-        "title" => t["title"],
-        "id" => t["id"].to_s,
-        "status" => t["status"]
+        'title' => t['title'],
+        'id' => t['id'].to_s,
+        'status' => t['status']
       }
     end
     response = request(query).dig('data', 'allTodos')
@@ -87,23 +98,23 @@ describe Graphlyte, :requests, :mocks do
     expect(response).to eql(expected)
   end
 
-  it "should support aliases and input" do 
+  it 'should support aliases and input' do
     query = Graphlyte.query do
-      self.User(id: 123).alias("sean") do
+      self.User(id: 123).alias('sean') do
         id
       end
-      self.User(id: 456).alias("bob") do
+      self.User(id: 456).alias('bob') do
         id
       end
     end
 
-    expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
-    response = request(query)["data"]
+    expected = { 'sean' => { 'id' => '123' }, 'bob' => { 'id' => '456' } }
+    response = request(query)['data']
 
     expect(response).to eql(expected)
   end
 
-  it "should parse aliases and input" do
+  it 'should parse aliases and input' do
     query = Graphlyte.parse(<<~GQL)
       query users {
         sean: User(id: 123) {
@@ -114,53 +125,54 @@ describe Graphlyte, :requests, :mocks do
         }
       }
     GQL
-    expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
-    response = request(query)["data"]
+    expected = { 'sean' => { 'id' => '123' }, 'bob' => { 'id' => '456' } }
+    response = request(query)['data']
 
     expect(response).to eql(expected)
   end
 
-  it "supports variables, inferring types appropriately" do 
-    query = Graphlyte.query do 
+  it 'supports variables, inferring types appropriately' do
+    query = Graphlyte.query do
       all_todos(per_page: :per_page, page: :pages) do
         status
         title
       end
     end
 
-    expected = {"allTodos" => [{"status" => "open", "title" => "Sic Dolor amet"}]}
+    expected = { 'allTodos' => [{ 'status' => 'open', 'title' => 'Sic Dolor amet' }] }
 
-    response = request(query, per_page: 1, pages: 1)["data"]
+    response = request(query, per_page: 1, pages: 1)['data']
 
     expect(response).to eql(expected)
   end
 
-  it "supports scalar arguments" do
+  it 'supports scalar arguments' do
     sean_id = Graphlyte.var('ID!', 'sid') # TODO: allow this to be anonymous!
     todo_filter = Graphlyte.var('TodoFilter')
 
-    fragment = Graphlyte.fragment("userFields", on: "Query") do
+    fragment = Graphlyte.fragment('userFields', on: 'Query') do
       User(id: sean_id) do
         name
       end
     end
 
-    query = Graphlyte.query do |f|
+    query = Graphlyte.query do
       all_todos(filter: todo_filter) do
         status
         title
       end
-      f << fragment
+      self << fragment
     end
 
-    expected = {"allTodos"=>[{"status"=>"open", "title"=>"Sic Dolor amet"}], "User"=>{"name"=>"John Doe"}}
+    expected = { 'allTodos' => [{ 'status' => 'open', 'title' => 'Sic Dolor amet' }],
+                 'User' => { 'name' => 'John Doe' } }
 
     response = request(query, sean_id.name => 123, todo_filter.name => { ids: [2] })
 
     expect(response['data']).to eql(expected)
   end
 
-  it "should support parsing scalars", :focus do
+  it 'should support parsing scalars', :focus do
     query = parse(<<~GQL)
       query todos($todoFilter: TodoFilter, $seanId: ID!) {
         allTodos(filter: $todoFilter) {
@@ -177,28 +189,28 @@ describe Graphlyte, :requests, :mocks do
     GQL
 
     expected = {
-      "allTodos"=>[{"status"=>"open", "title"=>"Sic Dolor amet"}],
-      "User"=>{"name"=>"John Doe"}
+      'allTodos' => [{ 'status' => 'open', 'title' => 'Sic Dolor amet' }],
+      'User' => { 'name' => 'John Doe' }
     }
 
-    response = request(query, todo_filter: {ids: [2]}, sean_id: 123)
+    response = request(query, todo_filter: { ids: [2] }, sean_id: 123)
 
     expect(response['data']).to eql(expected)
   end
 
-  it "should support argument variables" do 
+  it 'should support argument variables' do
     query = Graphlyte.query do
-      User(id: Graphlyte.var('ID!', 'sean_id')).alias("sean") { id }
-      User(id: Graphlyte.var('ID!', 'bob_id')).alias("bob") { id }
+      User(id: Graphlyte.var('ID!', 'sean_id')).alias('sean') { id }
+      User(id: Graphlyte.var('ID!', 'bob_id')).alias('bob') { id }
     end
 
-    expected = { "sean" => { "id" => "123"}, "bob" => {"id" => "456" } }
+    expected = { 'sean' => { 'id' => '123' }, 'bob' => { 'id' => '456' } }
     response = request(query, sean_id: 123, bob_id: 456)
 
     expect(response['data']).to eql(expected)
   end
 
-  it "should query for the schema" do 
+  it 'should query for the schema' do
     response = request(Graphlyte.schema_query)['data']
 
     expect(response).not_to be(nil)

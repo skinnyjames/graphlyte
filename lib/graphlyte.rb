@@ -3,15 +3,15 @@
 require 'forwardable'
 require 'json'
 
-require_relative "./graphlyte/syntax"
-require_relative "./graphlyte/schema"
-require_relative "./graphlyte/lexer"
-require_relative "./graphlyte/parser"
-require_relative "./graphlyte/editor"
-require_relative "./graphlyte/serializer"
-require_relative "./graphlyte/selection_builder"
-require_relative "./graphlyte/dsl"
-require_relative "./graphlyte/schema_query"
+require_relative './graphlyte/syntax'
+require_relative './graphlyte/schema'
+require_relative './graphlyte/lexer'
+require_relative './graphlyte/parser'
+require_relative './graphlyte/editor'
+require_relative './graphlyte/serializer'
+require_relative './graphlyte/selection_builder'
+require_relative './graphlyte/dsl'
+require_relative './graphlyte/schema_query'
 
 module Graphlyte
   extend SchemaQuery
