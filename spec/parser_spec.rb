@@ -41,9 +41,9 @@ describe Graphlyte::Parser do
       p = parser('X')
 
       r = p.one_of(
-        ->{ p.expect(:PUNCTATOR, '!') },
-        ->{ 'got ' + p.expect(:NAME, 'X') },
-        ->{ raise 'BANG' }
+        -> { p.expect(:PUNCTATOR, '!') },
+        -> { "got #{p.expect(:NAME, 'X')}" },
+        -> { raise 'BANG' }
       )
 
       expect(r).to eq 'got X'
@@ -152,7 +152,7 @@ describe Graphlyte::Parser do
         var('raf'),
         int('1'),
         Graphlyte::Syntax::Value.new(
-          Graphlyte::Syntax::NumericLiteral.new('1', '2', nil, false),
+          Graphlyte::Syntax::NumericLiteral.new(integer_part: '1', fractional_part: '2'),
           :NUMBER
         ),
         string('some string'),
@@ -194,9 +194,11 @@ describe Graphlyte::Parser do
 
       q = p.operation
 
-      expect(selection_hash(q.selection)).to eq({
+      expected = {
         a: { b: { c: { d: { e: { f: { g: { h: { i: { j: { k: { l: { m: { n: { o: {} } } } } } } } } } } } } } }
-      })
+      }
+
+      expect(selection_hash(q.selection)).to eq(expected)
     end
 
     it 'enforces a depth limit' do
@@ -211,8 +213,8 @@ describe Graphlyte::Parser do
       p.max_depth = 3
 
       expect(selection_hash(p.operation.selection)).to eq({
-        a: { b: { c: {} } }
-      })
+                                                            a: { b: { c: {} } }
+                                                          })
     end
 
     def selection_hash(selection)
@@ -238,13 +240,13 @@ describe Graphlyte::Parser do
             arguments: [
               Graphlyte::Syntax::Argument.new('a', string('foo')),
               Graphlyte::Syntax::Argument.new('input', {
-                'x' => int('1'),
-                'y' => enum(:FOO),
-                'z' => {
-                  'foo' => true_value,
-                  'bar' => null_value
-                }
-              })
+                                                'x' => int('1'),
+                                                'y' => enum(:FOO),
+                                                'z' => {
+                                                  'foo' => true_value,
+                                                  'bar' => null_value
+                                                }
+                                              })
             ],
             directives: [],
             selection: [
@@ -272,7 +274,7 @@ describe Graphlyte::Parser do
     it 'parses a representative query' do
       p = parser(fixture('query_0'))
 
-      q = p.operation
+      q = p.document
 
       expected = Graphlyte::Syntax::Operation.new(
         type: :query,
@@ -290,7 +292,7 @@ describe Graphlyte::Parser do
           Graphlyte::Syntax::Field.new(
             as: nil,
             name: 'currentUser',
-            arguments: nil,
+            arguments: [],
             directives: [Graphlyte::Syntax::Directive.new('client', nil)],
             selection: [
               Graphlyte::Syntax::Field.new(
@@ -300,17 +302,17 @@ describe Graphlyte::Parser do
                   Graphlyte::Syntax::Argument.new('format', enum(:LONG))
                 ],
                 directives: [],
-                selection: nil
+                selection: []
               ),
               Graphlyte::Syntax::Field.new(
                 as: 'years',
                 name: 'age',
-                arguments: nil,
+                arguments: [],
                 directives: [Graphlyte::Syntax::Directive.new(
                   'show',
-                  [Graphlyte::Syntax::Argument.new("if", true_value)]
+                  [Graphlyte::Syntax::Argument.new('if', true_value)]
                 )],
-                selection: nil
+                selection: []
               )
             ]
           ),
@@ -328,16 +330,18 @@ describe Graphlyte::Parser do
               Graphlyte::Syntax::Field.new(
                 as: nil,
                 name: 'foo',
-                arguments: nil,
+                arguments: [],
                 directives: [],
-                selection: nil
+                selection: []
               )
             ]
           )
         ]
       )
 
-      expect(q).to eq expected
+      expect(q).to be_equivalent_to(
+        Graphlyte::Document.new(definitions: [expected])
+      )
     end
   end
 
@@ -355,7 +359,8 @@ describe Graphlyte::Parser do
                 as: 'antagonists',
                 name: 'hero',
                 arguments: [
-                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: :EMPIRE))
+                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode',
+                                  value: match_structure(value: :EMPIRE))
                 ],
                 selection: [
                   match_structure(class: Graphlyte::Syntax::FragmentSpread, name: 'comparisonFields')
@@ -365,7 +370,8 @@ describe Graphlyte::Parser do
                 as: 'protagonists',
                 name: 'hero',
                 arguments: [
-                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode', value: match_structure(value: :JEDI))
+                  match_structure(class: Graphlyte::Syntax::Argument, name: 'episode',
+                                  value: match_structure(value: :JEDI))
                 ],
                 selection: [
                   match_structure(class: Graphlyte::Syntax::FragmentSpread, name: 'comparisonFields')
@@ -410,7 +416,7 @@ describe Graphlyte::Parser do
 
   def int(str)
     Graphlyte::Syntax::Value.new(
-      Graphlyte::Syntax::NumericLiteral.new(str, nil, nil, false),
+      Graphlyte::Syntax::NumericLiteral.new(integer_part: str),
       :NUMBER
     )
   end

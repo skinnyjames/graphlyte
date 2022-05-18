@@ -38,30 +38,24 @@ module Graphlyte
     def alias(name, &block)
       @field.as = name
 
-      if block_given?
-        @field.selection += @builder.build!(&block)
-      end
+      @field.selection += @builder.build!(&block) if block_given?
 
       self
     end
 
-    def method_missing(name, *args, **kwargs, &block)
+    def method_missing(name, *_args, **kwargs, &block)
       directive = Syntax::Directive.new(name.to_s)
 
-      if kwargs.any?
-        directive.arguments = @builder.argument_builder!.build(kwargs)
-      end
+      directive.arguments = @builder.argument_builder!.build(kwargs) if kwargs.any?
 
-      if block_given?
-        @field.selection += @builder.build!(&block)
-      end
+      @field.selection += @builder.build!(&block) if block_given?
 
       @field.directives << directive
 
       self
     end
 
-    def respond_to_missing
+    def respond_to_missing?(*)
       true
     end
   end
@@ -100,11 +94,16 @@ module Graphlyte
     def build!(&block)
       old = @selection
       curr = []
+      return curr unless block_given?
 
       @selection = curr
-      instance_eval(&block)
+      if block.parameters && !block.parameters.empty?
+        yield self
+      else
+        instance_eval(&block)
+      end
 
-      return curr
+      curr
     ensure
       @selection = old
     end
@@ -130,7 +129,7 @@ module Graphlyte
       select!(selected)
     end
 
-    def select!(selected, *args, as: nil, **kwargs, &block)
+    def select!(selected, *args, **kwargs, &block)
       case selected
       when Graphlyte::Syntax::Fragment
         selected.required_fragments.each do |frag|
@@ -141,24 +140,22 @@ module Graphlyte
         @selection << selected
       else
         name = selected.to_s
-        field = Syntax::Field.new(name: name, as: as, directives: [], selection: [])
+        field = Syntax::Field.new(name: name)
 
         args.each do |arg|
           case arg
           when Symbol
             field.directives << Syntax::Directive.new(arg.to_s)
+          when WithField
+            raise ArgumentError, 'Reference error' # caused by typos usually.
           else
             field.selection += self.class.build(@document) { select! arg }
           end
         end
 
-        if kwargs.any?
-          field.arguments = argument_builder!.build(kwargs)
-        end
+        field.arguments = argument_builder!.build(kwargs) if kwargs.any?
 
-        if block_given?
-          field.selection += self.class.build(@document, &block)
-        end
+        field.selection += self.class.build(@document, &block) if block_given?
 
         @selection << field
 
@@ -179,7 +176,7 @@ module Graphlyte
       end
     end
 
-    def respond_to_missing
+    def respond_to_missing?(*)
       true
     end
   end

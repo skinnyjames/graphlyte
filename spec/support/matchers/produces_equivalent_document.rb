@@ -5,7 +5,7 @@ require 'rspec/expectations'
 class DocDiff
   # delegate :empty?, to: :differences
 
-  class Entry < Struct.new(:path, :msg)
+  Entry = Struct.new(:path, :msg) do
     def to_s
       "(#{path.join('.')}): #{msg}"
     end
@@ -13,6 +13,9 @@ class DocDiff
 
   def initialize(expected, actual)
     canonicalize = Graphlyte::Editors::Canonicalize.new
+
+    @expected_fragment_names = expected.fragments.keys
+    @actual_fragment_names = actual.fragments.keys
     @expected = canonicalize.edit(expected)
     @actual = canonicalize.edit(actual)
   end
@@ -26,25 +29,42 @@ class DocDiff
 
     @differences = []
 
-    all_names = (@expected.operations.keys + @actual.operations.keys).to_set
-
-    all_names.each do |name|
-      if @expected.operations[name] && @actual.operations[name]
-        diff_operation(name)
-      elsif @expected.operations[name]
-        @differences << Entry.new([name || '<ANON>'], 'Only in expected')
-      else
-        @differences << Entry.new([name || '<ANON>'], 'Only in actual')
-      end
-    end
+    # Ignore fragments - they are inlined during canonicalization.
+    diff_operations
+    diff_fragment_names # do we care? Not sure...
 
     @differences
   end
 
-  def diff_operation(name)
-    actual = @actual.operations[name]
-    expected = @expected.operations[name]
+  private
 
+  def diff_operations
+    operations = diff_merge(@expected.operations, @actual.operations)
+
+    operations.each do |name, (e, a)|
+      if e && a
+        diff_operation(name, e, a)
+      else
+        only_in([name || '<ANON>'], e)
+      end
+    end
+  end
+
+  def diff_fragment_names
+    expected = @expected_fragment_names.to_set
+    actual = @actual_fragment_names.to_set
+    return if expected == actual
+
+    (expected - actual).each do |name|
+      @differences << Entry.new([:fragments, name], 'Only in expected')
+    end
+
+    (actual - expected).each do |name|
+      @differences << Entry.new([:fragments, name], 'Only in actual')
+    end
+  end
+
+  def diff_operation(name, expected, actual)
     return if expected == actual
 
     path = [name || '<ANON>']
@@ -55,7 +75,7 @@ class DocDiff
   end
 
   def diff_signatures(path, expected, actual)
-    path = path + [:signature, :variables]
+    path += %i[signature variables]
     expected = Array(expected.variables)
     actual = Array(actual.variables)
 
@@ -71,7 +91,7 @@ class DocDiff
   end
 
   def diff_directives(path, expected, actual)
-    path = path + [:directives]
+    path += [:directives]
     expected = Array(expected.directives)
     actual = Array(actual.directives)
 
@@ -81,34 +101,21 @@ class DocDiff
   end
 
   def diff_selection(path, expected, actual)
-    path = path + [:selection]
-    expected = Array(expected.selection)
-    actual = Array(actual.selection)
-
-    matched = expected.zip(actual)
-    n = matched.length
-    only_in_actual = actual.drop(n)
+    path += [:selection]
+    matched = diff_zip(expected.selection, actual.selection)
 
     matched.each_with_index do |(e, a), i|
-      if a.nil?
-        @differences << Entry.new(path + [i], 'Only in expected')
-      else
+      if e && a
         diff_selection_node(path + [i], e, a)
+      else
+        only_in(path + [i], e)
       end
-    end
-
-    only_in_actual.each_with_index do |a, i|
-      @differences << Entry.new(path + [i + n], 'Only in actual')
     end
   end
 
   def diff_selection_node(path, expected, actual)
     return if actual == expected
-
-    if actual.class != expected.class
-      @differences << Entry.new(path, "Expected a #{expected.class}, got a #{actual.class}")
-      return
-    end
+    return if diff_attr(:class, path, expected, actual)
 
     case expected
     when Graphlyte::Syntax::Field
@@ -121,7 +128,7 @@ class DocDiff
   end
 
   def diff_field(path, expected, actual)
-    path = path + [:field]
+    path += [:field]
     diff_attr(:name, path, expected, actual)
     diff_arguments(path, expected, actual)
     diff_directives(path, expected, actual)
@@ -129,12 +136,14 @@ class DocDiff
   end
 
   def diff_inline_fragment(path, expected, actual)
-    path = path + [:inline_fragment]
-    # TODO
+    path += [:inline_fragment]
+    diff_attr(:type_name, path, expected, actual)
+    diff_directives(path, expected, actual)
+    diff_selection(path, expected, actual)
   end
 
   def diff_arguments(path, expected, actual)
-    path = path + [:arguments]
+    path += [:arguments]
     expected = Array(expected.arguments)
     actual = Array(actual.arguments)
 
@@ -152,23 +161,62 @@ class DocDiff
   end
 
   def diff_non_ordered_collection(key, path, expected, actual)
-    expected = expected.to_h { [_1.send(key), _1] }
-    actual = actual.to_h { [_1.send(key), _1] }
+    expected = index_on(key, expected)
+    actual = index_on(key, actual)
 
-    return if expected == actual
-
-    all_names = (expected.keys + actual.keys).to_set
-
-    all_names.each do |name|
-      p = path + [name]
-      if expected[name] && actual[name]
-        yield(p, expected[name], actual[name])
-      elsif expected[name]
-        @differences << Entry.new(p, 'Only in expected')
+    diff_merge(expected, actual).each do |name, (e, a)|
+      if e && a
+        yield(path + [name], e, a)
       else
-        @differences << Entry.new(p, 'Only in actual')
+        only_in(path + [name], e)
       end
     end
+  end
+
+  # Merge two hashes, so each value is a two-tuple `[left[key], right[key]]`
+  def diff_merge(left, right)
+    lefts = left.transform_values { [_1, nil] }
+    rights = right.transform_values { [nil, _1] }
+    lefts.merge(rights) { |_k, l, r| [l.first, r.last] }
+  end
+
+  def index_on(key, collection)
+    collection.to_h { [_1.send(key), _1] }
+  end
+
+  # Merge two arrays (or nils), returning tuples: `[lefts[i], rights[i]]`
+  def diff_zip(lefts, rights)
+    lefts = Array(lefts)
+    rights = Array(rights)
+    matched = lefts.zip(rights)
+
+    matched + rights.drop(matched.length).map { [nil, _1] }
+  end
+
+  def only_in(path, expected)
+    @differences << Entry.new(path, expected ? 'Only in expected' : 'Only in actual')
+  end
+end
+
+RSpec::Matchers.define :be_equivalent_to do |expected|
+  match do |actual|
+    @diff = DocDiff.new(expected, actual)
+
+    @diff.empty?
+  end
+
+  failure_message do |actual|
+    buff = [
+      'Queries do not match! Got:',
+      actual.to_s,
+      'Found the following differences:'
+    ]
+
+    @diff.differences.each do |difference|
+      buff << " - #{difference}"
+    end
+
+    buff.join("\n")
   end
 end
 

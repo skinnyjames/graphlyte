@@ -83,7 +83,7 @@ module Graphlyte
     end
 
     Context = Struct.new(:document, :direction, :hooks, :path) do
-      def edit(object, &block)
+      def edit(object)
         parent = path.last
         path.push(object)
 
@@ -93,12 +93,12 @@ module Graphlyte
         if direction == :bottom_up
           begin
             yield object if block_given?
-            processor.call(object, action) if processor
+            processor&.call(object, action)
           rescue Deleted
             action.new_nodes = []
           end
         else
-          processor.call(object, action) if processor
+          processor&.call(object, action)
           action.new_nodes = editor.new_nodes.filter_map do |node|
             yield node if block_given?
             node
@@ -135,7 +135,7 @@ module Graphlyte
         return unless object.respond_to?(:arguments)
 
         object.arguments = object.arguments&.flat_map do |arg|
-          edit(arg) do |a|
+          edit(arg) do |_a|
             arg.value = edit_value(arg.value).first
             raise Deleted if arg.value.nil?
           end

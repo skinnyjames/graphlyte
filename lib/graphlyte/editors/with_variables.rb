@@ -24,7 +24,7 @@ module Graphlyte
 
         references = Editors::CollectVariableReferences.new.edit(doc)
 
-        editor = Editor.new.on_operation do |operation, action|
+        editor = Editor.new.on_operation do |operation, _action|
           refs = references[operation.class][operation.name]
           next unless refs
 

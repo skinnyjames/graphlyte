@@ -1,14 +1,17 @@
-require "rspec"
-require 'pry'
-require "rest_client"
-require "super_diff/rspec"
+# frozen_string_literal: true
 
-if ENV['COVERAGE'] || ENV['CI']
+require 'rspec'
+require 'pry'
+require 'rest_client'
+require 'super_diff/rspec'
+
+if ENV.fetch('COVERAGE') { ENV.fetch('CI', nil) }
   require 'simplecov'
   require 'simplecov-html'
   require 'simplecov-cobertura'
 
-  SimpleCov.formatters = SimpleCov::Formatter::MultiFormatter.new([SimpleCov::Formatter::CoberturaFormatter, SimpleCov::Formatter::HTMLFormatter])
+  SimpleCov.formatters = SimpleCov::Formatter::MultiFormatter.new([SimpleCov::Formatter::CoberturaFormatter,
+                                                                   SimpleCov::Formatter::HTMLFormatter])
 
   SimpleCov.start do
     add_filter '/tests/'

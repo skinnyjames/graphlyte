@@ -21,9 +21,12 @@ module Graphlyte
 
       def editor
         @editor ||= Editor
-          .top_down
-          .on_field { |field, action| infer(field, action.parent) }
-          .on_variable_reference { |ref, action| infer_ref(ref, action.closest(Syntax::Argument), action.closest(Syntax::Field)) }
+                    .top_down
+                    .on_field { |field, action| infer(field, action.parent) }
+                    .on_variable_reference do |ref, action|
+          infer_ref(ref, action.closest(Syntax::Argument),
+                    action.closest(Syntax::Field))
+        end
       end
 
       # For now we are ignoring variables nested in input objects.
