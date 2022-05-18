@@ -17,8 +17,8 @@ describe Graphlyte, :requests, :mocks do
   it 'should support fragments, argument syntax' do
     todo = Graphlyte.fragment('todoFields', on: 'Todo', &:title)
 
-    query = Graphlyte.query do
-      allTodos todo
+    query = Graphlyte.query do |q|
+      q.allTodos(todo)
     end
 
     expected = mock_response('todo').map { |t| { 'title' => t['title'] } }
@@ -30,8 +30,8 @@ describe Graphlyte, :requests, :mocks do
   it 'should support fragments, << syntax' do
     todo = Graphlyte.fragment('todoFields', on: 'Todo', &:title)
 
-    query = Graphlyte.query do
-      allTodos { |todos| todos << todo }
+    query = Graphlyte.query do |q|
+      q.allTodos { |todos| todos << todo }
     end
 
     expected = mock_response('todo').map { |t| { 'title' => t['title'] } }
@@ -99,13 +99,9 @@ describe Graphlyte, :requests, :mocks do
   end
 
   it 'should support aliases and input' do
-    query = Graphlyte.query do
-      self.User(id: 123).alias('sean') do
-        id
-      end
-      self.User(id: 456).alias('bob') do
-        id
-      end
+    query = Graphlyte.query do |q|
+      q.User(id: 123, &:id).alias('sean')
+      q.User(id: 456, &:id).alias('bob')
     end
 
     expected = { 'sean' => { 'id' => '123' }, 'bob' => { 'id' => '456' } }
@@ -132,10 +128,10 @@ describe Graphlyte, :requests, :mocks do
   end
 
   it 'supports variables, inferring types appropriately' do
-    query = Graphlyte.query do
-      all_todos(per_page: :per_page, page: :pages) do
-        status
-        title
+    query = Graphlyte.query do |q|
+      q.all_todos(per_page: :per_page, page: :pages) do |t|
+        t.status
+        t.title
       end
     end
 
@@ -150,18 +146,16 @@ describe Graphlyte, :requests, :mocks do
     sean_id = Graphlyte.var('ID!', 'sid') # TODO: allow this to be anonymous!
     todo_filter = Graphlyte.var('TodoFilter')
 
-    fragment = Graphlyte.fragment('userFields', on: 'Query') do
-      User(id: sean_id) do
-        name
-      end
+    fragment = Graphlyte.fragment('userFields', on: 'Query') do |q|
+      q.User(id: sean_id, &:name)
     end
 
-    query = Graphlyte.query do
-      all_todos(filter: todo_filter) do
-        status
-        title
+    query = Graphlyte.query do |q|
+      q.all_todos(filter: todo_filter) do |t|
+        t.status
+        t.title
       end
-      self << fragment
+      q << fragment
     end
 
     expected = { 'allTodos' => [{ 'status' => 'open', 'title' => 'Sic Dolor amet' }],
@@ -199,9 +193,9 @@ describe Graphlyte, :requests, :mocks do
   end
 
   it 'should support argument variables' do
-    query = Graphlyte.query do
-      User(id: Graphlyte.var('ID!', 'sean_id')).alias('sean') { id }
-      User(id: Graphlyte.var('ID!', 'bob_id')).alias('bob') { id }
+    query = Graphlyte.query do |q|
+      q.User(id: Graphlyte.var('ID!', 'sean_id')).alias('sean') { _1.id }
+      q.User(id: Graphlyte.var('ID!', 'bob_id')).alias('bob') { _1.id }
     end
 
     expected = { 'sean' => { 'id' => '123' }, 'bob' => { 'id' => '456' } }

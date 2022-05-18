@@ -18,16 +18,19 @@ describe Graphlyte::Selector do
       GQL
     end
 
-    it 'adds and removes fields' do
-      editor = described_class.new
-                              .at('project.pipelines.nodes.status', &:remove)
-                              .at('project.pipelines.nodes') do |node|
-        node.append do
-          downstream do
-            nodes { active }
-          end
+    let(:downstream) do
+      lambda do |n|
+        n.downstream do |ds|
+          ds.nodes(&:active)
         end
       end
+    end
+
+    it 'adds and removes fields' do
+      editor = described_class
+               .new
+               .at('project.pipelines.nodes.status', &:remove)
+               .at('project.pipelines.nodes') { |node| node.append(&downstream) }
 
       expect(editor.edit(query)).to produce_equivalent_document(<<~STRING)
         query ($projectPath: ID!, $commitSha: String) {

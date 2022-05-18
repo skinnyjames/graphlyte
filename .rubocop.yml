@@ -132,4 +132,6 @@ Style/StringChars: # new in 1.12
   Enabled: true
 Style/SwapValues: # new in 1.1
   Enabled: true
+Style/SymbolProc:
+  Enabled: false
 

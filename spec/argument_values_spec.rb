@@ -5,48 +5,36 @@ describe Graphlyte do
     bar = Graphlyte.var('Int', 'bar')
     foo = Graphlyte.var('String', 'foo')
 
-    query = Graphlyte.query do
-      arguments(foo: bar, bar: foo) do
-        id
-      end
+    query = Graphlyte.query do |q|
+      q.arguments(foo: bar, bar: foo)
     end
 
     expect(query).to produce_equivalent_document(<<~STRING)
       query ($foo: String, $bar: Int) {
-        arguments(foo: $bar, bar: $foo) {
-          id
-        }
+        arguments(foo: $bar, bar: $foo)
       }
     STRING
   end
 
   it 'supports variables, using symbols' do
-    query = Graphlyte.query do
-      arguments(foo: :bar) do
-        id
-      end
+    query = Graphlyte.query do |q|
+      q.arguments(foo: :bar)
     end
 
     expect(query).to produce_equivalent_document(<<~STRING)
       query {
-        arguments(foo: $bar) {
-          id
-        }
+        arguments(foo: $bar)
       }
     STRING
   end
 
   it 'should support integers' do
-    query = Graphlyte.query do
-      arguments(int: 1) do
-        id
-      end
+    query = Graphlyte.query do |q|
+      q.arguments(int: 1)
     end
     expect(query).to produce_equivalent_document(<<~STRING)
       {
-        arguments(int: 1) {
-          id
-        }
+        arguments(int: 1)
       }
     STRING
   end
@@ -117,8 +105,8 @@ describe Graphlyte do
   end
 
   it 'should support hashes' do
-    query = Graphlyte.query do
-      arguments(object: { one: 2, three: [1, 2] })
+    query = Graphlyte.query do |q|
+      q.arguments(object: { one: 2, three: [1, 2] })
     end
 
     expect(query).to produce_equivalent_document(<<~STRING)
@@ -129,9 +117,9 @@ describe Graphlyte do
   end
 
   it 'should handle booleans' do
-    query = Graphlyte.query do
-      foo(boolean: true)
-      bar(boolean: false)
+    query = Graphlyte.query do |q|
+      q.foo(boolean: true)
+      q.bar(boolean: false)
     end
 
     expect(query).to produce_equivalent_document(<<~STRING)
