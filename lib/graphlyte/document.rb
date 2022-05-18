@@ -113,5 +113,9 @@ module Graphlyte
         operation: operation
       }.compact.to_json
     end
+
+    def variable_references
+      Editors::CollectVariableReferences.new.edit(self)[Syntax::Operation]
+    end
   end
 end
