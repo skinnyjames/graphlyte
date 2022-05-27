@@ -16,7 +16,7 @@ module Graphlyte
     end
 
     def self.attributes
-      @attrs ||= [].to_set
+      @attributes ||= [].to_set
     end
 
     # Permissive constructor: ignores unknown attributes
@@ -42,7 +42,13 @@ module Graphlyte
       self.class.new(**self.class.attributes.to_h { [_1, dup_attribute(_1)] })
     end
 
-    private def dup_attribute(attr)
+    def inspect
+      "#<#{self.class} #{self.class.attributes.map { "@#{_1}=#{send(_1).inspect}" }.join(' ')}>"
+    end
+
+    private
+
+    def dup_attribute(attr)
       value = send(attr)
 
       case value
@@ -55,12 +61,8 @@ module Graphlyte
       end
     end
 
-    def inspect
-      "#<#{self.class} #{self.class.attributes.map { "@#{_1}=#{send(_1).inspect}" }.join(' ')}>"
-    end
-
-    private def state
-      self.class.instance_variable_get(:@attrs).map { send _1 }
+    def state
+      self.class.attributes.map { send _1 }
     end
   end
 end

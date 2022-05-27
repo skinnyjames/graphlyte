@@ -46,6 +46,9 @@ module Graphlyte
       @direction = :bottom_up
     end
 
+    # The value passed to the handler blocks, in addition to the syntax node.
+    # Users can call methods on this object to edit the document in-place, as
+    # well as read information about the context of this node.
     class Action
       attr_reader :new_nodes, :path, :definition, :parent, :document
 
@@ -82,34 +85,45 @@ module Graphlyte
       end
     end
 
+    # The class responsible for orchestration of the hooks. This class
+    # defines the recursion through the document.
     Context = Struct.new(:document, :direction, :hooks, :path) do
-      def edit(object)
+      def edit(object, &block)
         parent = path.last
         path.push(object)
 
         processor = hooks[object.class]
         action = Action.new(object, path, parent, document)
 
-        if direction == :bottom_up
-          begin
-            yield object if block_given?
-            processor&.call(object, action)
-          rescue Deleted
-            action.new_nodes = []
-          end
+        case direction
+        when :bottom_up
+          edit_bottom_up(object, processor, action, &block)
+        when :top_down
+          edit_top_down(object, processor, action, &block)
         else
-          processor&.call(object, action)
-          action.new_nodes = editor.new_nodes.filter_map do |node|
-            yield node if block_given?
-            node
-          rescue Deleted
-            nil
-          end
+          raise ArgumentError, "Unknown direction: #{direction}"
         end
 
         action.new_nodes
       ensure
         path.pop
+      end
+
+      def edit_top_down(object, processor, action)
+        processor&.call(object, action)
+        action.new_nodes = action.new_nodes.filter_map do |node|
+          yield node if block_given?
+          node
+        rescue Deleted
+          nil
+        end
+      end
+
+      def edit_bottom_up(object, processor, action)
+        yield object if block_given?
+        processor&.call(object, action)
+      rescue Deleted
+        action.new_nodes = []
       end
 
       def edit_variables(object)

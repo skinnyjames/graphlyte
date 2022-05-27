@@ -6,6 +6,30 @@ require_relative './annotate_types'
 
 module Graphlyte
   module Editors
+    # Remove unnecessary spreads.
+    #
+    # For example in the query:
+    #
+    # ```
+    # query {
+    #   User(id: 1) {
+    #     ... on User {
+    #       name
+    #     }
+    #   }
+    # }
+    # ```
+    #
+    # If the `Query.User` field has the type `User` then the spread `... on User` is
+    # tautological, and we can replace this with:
+    #
+    # ```
+    # query {
+    #   User(id: 1) {
+    #     name
+    #   }
+    # }
+    # ```
     class RemoveUnneededSpreads
       def initialize(schema = nil)
         @schema = schema

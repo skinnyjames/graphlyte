@@ -82,7 +82,7 @@ describe Graphlyte::Parser do
     it 'parses zero or more repetitions, up to EOF' do
       p = parser('a b c d e')
 
-      names = p.many { p.parse_name }
+      names = p.many { p.name }
 
       expect(names).to eq %w[a b c d e]
     end
@@ -90,7 +90,7 @@ describe Graphlyte::Parser do
     it 'parses zero or more repetitions' do
       p = parser('a b c d e 1 2 3!')
 
-      names = p.many { p.parse_name }
+      names = p.many { p.name }
       nums = p.many { p.expect(:NUMBER) }
       strings = p.many { p.expect(:STRING) }
 
@@ -102,7 +102,7 @@ describe Graphlyte::Parser do
     it 'supports a limit' do
       p = parser('a b c d e 1 2 3!')
 
-      names = p.many(limit: 3) { p.parse_name }
+      names = p.many(limit: 3) { p.name }
 
       expect(names).to eq %w[a b c]
     end
@@ -112,7 +112,7 @@ describe Graphlyte::Parser do
     it 'parses one or more repetitions' do
       p = parser('a b c d e 1 2 3!')
 
-      names = p.some { p.parse_name }
+      names = p.some { p.name }
       nums = p.some { p.expect(:NUMBER) }
 
       expect(names).to eq %w[a b c d e]
@@ -126,7 +126,7 @@ describe Graphlyte::Parser do
     it 'parses a parse surrounded by brackets' do
       p = parser('{ a b c } d e f')
 
-      names = p.bracket('{', '}') { p.some { p.parse_name } }
+      names = p.bracket('{', '}') { p.some { p.name } }
 
       expect(names).to eq %w[a b c]
     end

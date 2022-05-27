@@ -9,6 +9,12 @@ require_relative './refinements/string_refinement'
 require_relative './editors/with_variables'
 
 module Graphlyte
+  # The representation of a GraphQL document.
+  #
+  # Documents can have multiple definitions, which can
+  # be queries, mutations, subscriptions (operations) or fragments.
+  #
+  # During execution, only one operation can be executed.
   class Document < Graphlyte::Data
     using Graphlyte::Refinements::StringRefinement
     extend Forwardable
@@ -46,6 +52,14 @@ module Graphlyte
       @definitions << dfn
     end
 
+    def add_fragments(frags)
+      current = fragments
+
+      frags.each do |frag|
+        @definitions << frag unless current[frag.name]
+      end
+    end
+
     def declare(var)
       if var.name.nil?
         var.name = "var#{@var_name_counter}"
@@ -70,15 +84,11 @@ module Graphlyte
     end
 
     def fragments
-      definitions.select { _1.is_a?(Graphlyte::Syntax::Fragment) }.to_h do
-        [_1.name, _1]
-      end
+      definitions.select { _1.is_a?(Graphlyte::Syntax::Fragment) }.to_h { [_1.name, _1] }
     end
 
     def operations
-      @definitions.select { _1.is_a?(Graphlyte::Syntax::Operation) }.to_h do
-        [_1.name, _1]
-      end
+      @definitions.select { _1.is_a?(Graphlyte::Syntax::Operation) }.to_h { [_1.name, _1] }
     end
 
     def executable?

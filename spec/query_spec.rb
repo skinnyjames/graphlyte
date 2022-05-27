@@ -3,10 +3,10 @@
 describe Graphlyte do
   it 'is possible to select fields that we cannot name in ruby' do
     query = Graphlyte.query do |q|
-      q.hero do |q|
-        q.select!(:select)
-        q.select!(:open)
-        q.select!(:if)
+      q.hero do |hero|
+        hero.select!(:select)
+        hero.select!(:open)
+        hero.select!(:if)
       end
     end
 

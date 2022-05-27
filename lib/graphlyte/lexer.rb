@@ -83,8 +83,6 @@ module Graphlyte
       tokens << Lexing::Token.new(:EOF, nil, after_source_end_location)
     end
 
-    private
-
     def after_source_end_location
       Lexing::Location.eof
     end
@@ -190,6 +188,31 @@ module Graphlyte
     end
 
     def block_string_content
+      chars = block_chars_raw
+
+      lines = chomp_lines(chars.join.lines)
+      # Consistent indentation
+      left_margin = lines.map do |line|
+        line.chars.take_while { _1 == ' ' }.length
+      end.min
+
+      lines.map { _1[left_margin..] }.join(LINEFEED)
+    end
+
+    # Strip leading and trailing blank lines, and whitespace on the right margins
+    def chomp_lines(lines)
+      strip_trailing_blank_lines(strip_leading_blank_lines(lines.map(&:chomp)))
+    end
+
+    def strip_leading_blank_lines(lines)
+      lines.drop_while { _1 =~ /^\s*$/ }
+    end
+
+    def strip_trailing_blank_lines(lines)
+      strip_leading_blank_lines(lines.reverse).reverse
+    end
+
+    def block_chars_raw
       chars = []
       terminated = false
 
@@ -203,16 +226,7 @@ module Graphlyte
 
       lex_error('Unterminated string') unless terminated
 
-      # Strip leading and trailing blank lines
-      lines = chars.join.lines.map(&:chomp)
-      lines = lines.drop_while { _1 =~ /^\s*$/ }
-      lines = lines.reverse.drop_while { _1 =~ /^\s*$/ }.reverse
-      # Consistent indentation
-      left_margin = lines.map do |line|
-        line.chars.take_while { _1 == ' ' }.length
-      end.min
-
-      lines.map { _1[left_margin..] }.join(LINEFEED)
+      chars
     end
 
     def take_while

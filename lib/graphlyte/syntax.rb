@@ -151,6 +151,10 @@ module Graphlyte
         @inferred_type ||= inferred_type
       end
 
+      def to_definition
+        VariableDefinition.new(variable: variable, type: inferred_type)
+      end
+
       private
 
       def state

@@ -12,55 +12,80 @@ module Graphlyte
       CannotInfer = Class.new(StandardError)
       TypeMismatch = Class.new(StandardError)
 
-      def initialize(schema = nil, operation, variables)
+      def initialize(schema, operation, variables)
         @schema = schema
         @operation = operation
         @variables = variables
       end
 
       def edit(doc)
-        Editors::SelectOperation.new(@operation).edit(doc) if @operation
-        Editors::AnnotateTypes.new(@schema).edit(doc) if @schema
+        select_operation(doc)
+        annotate_types(doc)
 
         references = Editors::CollectVariableReferences.new.edit(doc)
-
-        editor = Editor.new.on_operation do |operation, _action|
-          refs = references[operation.class][operation.name]
-          next unless refs
-
-          operation.variables ||= []
-          current_vars = operation.variables.to_h { [_1.variable, _1] }
-
-          added = {}
-          refs.to_a.reject { current_vars[_1.variable] }.each do |ref|
-            infer(operation.variables, added, doc, ref)
-          end
-        end
+        editor = infer_variable_type(references)
 
         editor.edit(doc)
       end
 
-      def infer(variables, added, doc, ref)
-        # Only way this could happen is if `uniq` produces duplicate names
-        # And that can only happen if there are two types inferred
-        # for the same reference.
-        if prev = added[ref.variable]
-          raise TypeMismatch, "#{ref.variable}: #{ref.inferred_type} != #{prev.type}"
-        end
-
-        var = doc.variables[ref.variable]
-
-        var ||= Syntax::VariableDefinition.new(variable: ref.variable, type: ref.inferred_type)
-        var.type ||= ref.inferred_type
-        var.type ||= runtime_type_of(@variables[ref.variable])
-
-        raise CannotInfer, ref.variable unless var.type
-
-        variables << var
-        added[ref.variable] = var
+      def annotate_types(doc)
+        Editors::AnnotateTypes.new(@schema).edit(doc) if @schema
       end
 
-      def runtime_type_of(value)
+      def select_operation(doc)
+        Editors::SelectOperation.new(@operation).edit(doc) if @operation
+      end
+
+      def infer_variable_type(references)
+        Editor.new.on_operation do |operation, editor|
+          refs = references[operation.class][operation.name]
+          next unless refs
+
+          infer_operation(operation, refs, editor.document)
+        end
+      end
+
+      def infer_operation(operation, refs, document)
+        current_vars = current_operation_variables(operation)
+
+        added = {}
+        refs.to_a.reject { current_vars[_1.variable] }.each do |ref|
+          # Only way this could happen is if `uniq` produces duplicate names
+          # And that can only happen if there are two types inferred
+          # for the same reference.
+          if (prev = added[ref.variable])
+            raise TypeMismatch, "#{ref.variable}: #{ref.inferred_type} != #{prev.type}"
+          end
+
+          infer(operation.variables, added, document, ref)
+        end
+      end
+
+      def current_operation_variables(operation)
+        operation.variables ||= []
+        operation.variables.to_h { [_1.variable, _1] }
+      end
+
+      def infer(variables, added, doc, ref)
+        var = doc.variables.fetch(ref.variable, ref.to_definition)
+        type = var.type || ref.inferred_type || runtime_type_of(ref)
+
+        if type
+          var.type ||= type
+          variables << var
+          added[ref.variable] = var
+        else
+          cannot_infer!(ref)
+        end
+      end
+
+      def cannot_infer!(ref)
+        raise CannotInfer, ref.variable
+      end
+
+      def runtime_type_of(ref)
+        value = @variables[ref.variable]
+
         case value
         when Integer
           Syntax::Type.non_null('Int')

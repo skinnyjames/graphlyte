@@ -79,27 +79,14 @@ module Graphlyte
 
       # Compute the transitive closure of fragments used in each operation.
       def build_fragment_tree(doc)
-        names_per_op = {}
-        names_per_fragment = {}
+        names = collect_fragment_names(doc)
 
-        collect = Editor.new.on_fragment_spread do |spread, action|
-          set = case action.definition
-                when Syntax::Operation
-                  names_per_op[action.definition.name] ||= [].to_set
-                else
-                  names_per_fragment[action.definition.name] ||= [].to_set
-                end
-
-          set << spread.name
-        end
-
-        collect.edit(doc)
-
-        names_per_op.each do |_op_name, spreads|
+        # Promote fragments in fragments to the operation at the root
+        names[Syntax::Operation].each do |_op_name, spreads|
           unvisited = spreads.to_a
 
           until unvisited.empty?
-            names_per_fragment[unvisited.pop]&.each do |name|
+            names[Syntax::Fragment][unvisited.pop]&.each do |name|
               next if spreads.include?(name)
 
               spreads << name
@@ -109,6 +96,20 @@ module Graphlyte
         end
 
         names_per_op
+      end
+
+      def collect_fragment_names(doc)
+        names = { Syntax::Operation => {}, Syntax::Fragment => {} }
+
+        collect = Editor.new.on_fragment_spread do |spread, action|
+          set = (names[action.definition.class] ||= [].to_set)
+
+          set << spread.name
+        end
+
+        collect.edit(doc)
+
+        names
       end
     end
   end
