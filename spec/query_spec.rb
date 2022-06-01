@@ -2,11 +2,11 @@
 
 describe Graphlyte do
   it 'is possible to select fields that we cannot name in ruby' do
-    query = Graphlyte.query do
-      hero do
-        select!(:select)
-        select!(:open)
-        select!(:if)
+    query = Graphlyte.query do |q|
+      q.hero do |hero|
+        hero.select!(:select)
+        hero.select!(:open)
+        hero.select!(:if)
       end
     end
 
@@ -20,12 +20,12 @@ describe Graphlyte do
   end
 
   it 'does not shadow fields' do
-    query = Graphlyte.query do
-      hero do
-        _
-        on
-        build
-        argument_builder
+    query = Graphlyte.query do |q|
+      q.hero do |h|
+        h._
+        h.on
+        h.build
+        h.argument_builder
       end
     end
 
@@ -39,12 +39,10 @@ describe Graphlyte do
   end
 
   it 'supports aliases' do
-    query = Graphlyte.query do
-      hero(name: 'Jo').alias(:jo) do
-        name
-      end
+    query = Graphlyte.query do |q|
+      q.hero(name: 'Jo', &:name).alias(:jo)
 
-      self.bill = hero(name: 'Bill') { name }
+      q.bill = q.hero(name: 'Bill', &:name)
     end
 
     expect(query).to produce_equivalent_document(<<~STRING)
@@ -56,11 +54,11 @@ describe Graphlyte do
   end
 
   it 'supports directives' do
-    query = Graphlyte.query do
-      hero(episode: :episode) do
-        name
-        friends.include(if: :with_friends) do
-          name
+    query = Graphlyte.query do |q|
+      q.hero(episode: :episode) do |hero|
+        hero.name
+        hero.friends.include(if: :with_friends) do |f|
+          f.name
         end
       end
     end
@@ -77,12 +75,12 @@ describe Graphlyte do
     STRING
   end
 
-  it 'supports fragments' do
-    fragment = Graphlyte.fragment(on: 'Friends') { something }
+  it 'supports fragments, using <<' do
+    fragment = Graphlyte.fragment(on: 'Friends', &:something)
 
-    query = Graphlyte.query do
-      hero(episode: :episode) do
-        self << fragment
+    query = Graphlyte.query do |q|
+      q.hero(episode: :episode) do |hero|
+        hero << fragment
       end
     end
 
@@ -100,11 +98,9 @@ describe Graphlyte do
   end
 
   it 'supports inline fragments' do
-    query = Graphlyte.query do
-      hero(episode: :episode) do
-        on!('Friends') do
-          something
-        end
+    query = Graphlyte.query do |q|
+      q.hero(episode: :episode) do |hero|
+        hero.on!('Friends', &:something)
       end
     end
 
@@ -120,11 +116,11 @@ describe Graphlyte do
   end
 
   it 'converts snake_case to camelCase' do
-    query = Graphlyte.query do
-      snake_case_works
-      __type_name
-      type_name__
-      self.User # must use self. to refer to 'constants'
+    query = Graphlyte.query do |q|
+      q.snake_case_works
+      q.__type_name
+      q.type_name__
+      q.User
     end
 
     expect(query).to produce_equivalent_document(<<~STRING)
@@ -137,16 +133,16 @@ describe Graphlyte do
     STRING
   end
 
-  it 'should support buik queries' do
-    query1 = Graphlyte.query('FR') do
-      bulk(id: 1) do |b|
+  it 'should support bulk queries' do
+    query1 = Graphlyte.query('FR') do |q|
+      q.bulk(id: 1) do |b|
         b.bon
         b.mal
       end
     end
 
-    query2 = Graphlyte.query('DE') do
-      bulk(id: 2) do |b|
+    query2 = Graphlyte.query('DE') do |q|
+      q.bulk(id: 2) do |b|
         b.gut
         b.schlecht
       end

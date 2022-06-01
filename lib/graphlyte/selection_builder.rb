@@ -4,6 +4,7 @@ require_relative './syntax'
 require_relative './refinements/string_refinement'
 
 module Graphlyte
+  # Helper to build arguments for a field selection.
   class ArgumentBuilder
     using Graphlyte::Refinements::StringRefinement
 
@@ -12,6 +13,8 @@ module Graphlyte
     end
 
     def build(arguments)
+      return [] unless arguments.any?
+
       arguments.to_a.map do |(k, v)|
         value = case v
                 when Syntax::Value
@@ -29,6 +32,8 @@ module Graphlyte
     end
   end
 
+  # The return value from `select!`. Allows further modifications (aliasing,
+  # directives) to the field.
   class WithField
     def initialize(field, builder)
       @field = field
@@ -84,6 +89,8 @@ module Graphlyte
     Variable = Struct.new(:type, :name, keyword_init: true)
 
     def self.build(document, &block)
+      return [] unless block_given?
+
       new(document).build!(&block)
     end
 
@@ -91,17 +98,14 @@ module Graphlyte
       @document = document
     end
 
-    def build!(&block)
+    def build!
       old = @selection
       curr = []
       return curr unless block_given?
 
       @selection = curr
-      if block.parameters && !block.parameters.empty?
-        yield self
-      else
-        instance_eval(&block)
-      end
+
+      yield self
 
       curr
     ensure
@@ -132,32 +136,14 @@ module Graphlyte
     def select!(selected, *args, **kwargs, &block)
       case selected
       when Graphlyte::Syntax::Fragment
-        selected.required_fragments.each do |frag|
-          @document.definitions << frag unless @document.fragments[frag.name]
-        end
+        @document.add_fragments(selected.required_fragments)
         @selection << Graphlyte::Syntax::FragmentSpread.new(name: selected.name)
       when Graphlyte::Syntax::InlineFragment, Graphlyte::Syntax::Field
         @selection << selected
       else
-        name = selected.to_s
-        field = Syntax::Field.new(name: name)
-
-        args.each do |arg|
-          case arg
-          when Symbol
-            field.directives << Syntax::Directive.new(arg.to_s)
-          when WithField
-            raise ArgumentError, 'Reference error' # caused by typos usually.
-          else
-            field.selection += self.class.build(@document) { select! arg }
-          end
-        end
-
-        field.arguments = argument_builder!.build(kwargs) if kwargs.any?
-
-        field.selection += self.class.build(@document, &block) if block_given?
-
-        @selection << field
+        field = new_field!(selected.to_s, args)
+        field.arguments = argument_builder!.build(kwargs)
+        field.selection += self.class.build(@document, &block)
 
         WithField.new(field, self)
       end
@@ -165,6 +151,26 @@ module Graphlyte
 
     def argument_builder!
       @argument_builder ||= ArgumentBuilder.new(@document)
+    end
+
+    private
+
+    def new_field!(name, args)
+      field = Syntax::Field.new(name: name)
+      @selection << field
+
+      args.each do |arg|
+        case arg
+        when Symbol
+          field.directives << Syntax::Directive.new(arg.to_s)
+        when WithField
+          raise ArgumentError, 'Reference error' # caused by typos usually.
+        else
+          field.selection += self.class.build(@document) { _1.select! arg }
+        end
+      end
+
+      field
     end
 
     def method_missing(name, *args, **kwargs, &block)

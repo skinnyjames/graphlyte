@@ -6,6 +6,15 @@ require_relative './refinements/string_refinement'
 require_relative './editors/infer_signature'
 
 module Graphlyte
+  # The DSL methods for query construction are defined here.
+  #
+  # The main methods are:
+  #
+  # - `var`: creates a fresh unique variable
+  # - `enum`: allows referring to enum values
+  # - `fragment`: creates a fragment that can be re-used in operations
+  # - `query`: creates a `Query` operation
+  # - `mutation`: creates a `Mutation` operation
   class DSL
     using Graphlyte::Refinements::StringRefinement
 

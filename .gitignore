@@ -10,3 +10,4 @@ coverage
 .bundle
 nohup.out
 log/*.log
+.bundle-install

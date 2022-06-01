@@ -9,10 +9,12 @@ require_relative './graphlyte/lexer'
 require_relative './graphlyte/parser'
 require_relative './graphlyte/editor'
 require_relative './graphlyte/serializer'
+require_relative './graphlyte/selector'
 require_relative './graphlyte/selection_builder'
 require_relative './graphlyte/dsl'
 require_relative './graphlyte/schema_query'
 
+# A GraphQL parsing, introspection, construction and manipulation library
 module Graphlyte
   extend SchemaQuery
   extend SingleForwardable

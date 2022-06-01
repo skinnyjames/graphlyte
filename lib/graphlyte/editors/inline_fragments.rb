@@ -4,6 +4,10 @@ require_relative '../editor'
 
 module Graphlyte
   module Editors
+    # Replace all uses of fragment spreads by inlining the fragment. This will
+    # increase the size of the document, sometimes by rather a lot.
+    #
+    # But doing so then makes other analysis (such as variable usage) much simpler.
     class InlineFragments
       FragmentNotFound = Class.new(StandardError)
 

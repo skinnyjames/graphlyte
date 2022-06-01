@@ -3,29 +3,31 @@
 require_relative './data'
 
 module Graphlyte
+  # Represents a schema definition, containing all type definitions available in a server
+  # Reflects the response to a [schema query](./schema_query.rb)
   class Schema < Graphlyte::Data
+    # A directive adds metadata to a defintion.
+    # See: https://spec.graphql.org/October2021/#sec-Language.Directives
     class Directive < Graphlyte::Data
       attr_accessor :description, :name
       attr_reader :arguments
 
-      def initialize
-        @arguments = {}
+      def initialize(**)
+        super
+
+        @arguments ||= {}
       end
 
       def self.from_schema_response(data)
-        dir = new
-
-        dir.name = data['name']
-        dir.description = data['description']
-
-        data['arguments']&.each do |arg_data|
-          dir.arguments[arg_data['name']] = InputValue.from_schema_response(arg_data)
-        end
-
-        dir
+        new(
+          name: data['name'],
+          description: data['description'],
+          arguments: Schema.entity_map(InputValue, data['arguments'])
+        )
       end
     end
 
+    # An input value defines the values of arguments and the fields of input objects.
     class InputValue < Graphlyte::Data
       attr_accessor :name, :description, :type, :default_value
 
@@ -41,6 +43,8 @@ module Graphlyte
       end
     end
 
+    # A type ref names a run-time type
+    # See `Type` for the full type definition.
     class TypeRef < Graphlyte::Data
       attr_accessor :kind, :name, :of_type
 
@@ -63,6 +67,7 @@ module Graphlyte
       end
     end
 
+    # The description of an enum member
     class Enum < Graphlyte::Data
       attr_accessor :name, :description, :is_deprecated, :deprecation_reason
 
@@ -71,100 +76,90 @@ module Graphlyte
       end
     end
 
+    # A full type definition.
     class Type < Graphlyte::Data
       attr_accessor :kind, :name, :description
       attr_reader :fields, :input_fields, :interfaces, :enums, :possible_types
 
-      def initialize
-        @fields = {}
-        @input_fields = {}
-        @interfaces = []
-        @enums = {}
-        @possible_types = []
+      def initialize(**)
+        super
+        @fields ||= {}
+        @input_fields ||= {}
+        @interfaces ||= []
+        @enums ||= {}
+        @possible_types ||= []
       end
 
       def self.from_schema_response(data)
-        type = new
-        type.kind = data['kind'].to_sym
-        type.name = data['name']
-        type.description = data['description']
-
-        data['fields']&.each do |field_data|
-          type.fields[field_data['name']] = Field.from_schema_response(field_data)
-        end
-
-        data['inputFields']&.each do |field_data|
-          type.input_fields[field_data['name']] = InputValue.from_schema_response(field_data)
-        end
-
-        data['interfaces']&.each do |d|
-          type.interfaces << TypeRef.from_schema_response(d)
-        end
-
-        data['enumValues']&.each do |enum_data|
-          type.enums[enum_data['name']] = Enum.from_schema_response(enum_data)
-        end
-
-        data['possibleTypes']&.each do |type_ref_data|
-          type.possible_types << TypeRef.from_schema_response(type_ref_data)
-        end
-
-        type
+        new(
+          kind: data['kind'].to_sym,
+          name: data['name'],
+          description: data['description'],
+          fields: Schema.entity_map(Field, data['fields']),
+          input_fields: Schema.entity_map(InputValue, data['inputFields']),
+          enums: Schema.entity_map(Enum, data['enumValues']),
+          interfaces: Schema.entity_list(TypeRef, data['interfaces']),
+          possible_types: Schema.entity_list(TypeRef, data['possibleTypes'])
+        )
       end
     end
 
+    # A field definition
     class Field < Graphlyte::Data
       attr_accessor :name, :description, :type, :is_deprecated, :deprecation_reason
       attr_reader :arguments
 
-      def initialize
-        @arguments = {}
+      def initialize(**)
+        super
+
+        @arguments ||= {}
       end
 
       def self.from_schema_response(data)
-        field = new
-
-        field.name = data['name']
-        field.description = data['description']
-        field.type = TypeRef.from_schema_response(data['type'])
-        field.is_deprecated = data['isDeprecated']
-        field.deprecation_reason = data['deprecationReason']
-
-        data['arguments']&.each do |arg_data|
-          field.arguments[arg_data['name']] = InputValue.from_schema_response(arg_data)
-        end
-
-        field
+        new(
+          name: data['name'],
+          description: data['description'],
+          type: TypeRef.from_schema_response(data['type']),
+          is_deprecated: data['isDeprecated'],
+          deprecation_reason: data['deprecationReason'],
+          arguments: Schema.entity_map(InputValue, data['arguments'])
+        )
       end
     end
 
     attr_accessor :query_type, :mutation_type, :subscription_type
     attr_reader :types, :directives
 
-    def initialize
-      @types = {}
-      @directives = {}
+    def initialize(**)
+      super
+
+      @types ||= {}
+      @directives ||= {}
     end
 
     def self.from_schema_response(response)
       data = response.dig('data', '__schema')
       raise Argument, 'No data' unless data
 
-      schema = Schema.new
+      new(
+        query_type: data.dig('queryType', 'name'),
+        mutation_type: data.dig('queryType', 'name'),
+        subscription_type: data.dig('subscriptionType', 'name'),
+        types: entity_map(Type, data['types']),
+        directives: entity_map(Directive, data['directives'])
+      )
+    end
 
-      schema.query_type = data.dig('queryType', 'name')
-      schema.mutation_type = data.dig('queryType', 'name')
-      schema.subscription_type = data.dig('subscriptionType', 'name')
+    def self.entity_list(entity, resp)
+      return unless resp
 
-      data['types'].each do |type_data|
-        schema.types[type_data['name']] = Type.from_schema_response(type_data)
-      end
+      resp.map { entity.from_schema_response(_1) }
+    end
 
-      data['directives'].each do |directive_data|
-        schema.directives[directive_data['name']] = Directive.from_schema_response(directive_data)
-      end
+    def self.entity_map(entity, resp)
+      return unless resp
 
-      schema
+      resp.to_h { |entry| [entry['name'], entity.from_schema_response(entry)] }
     end
   end
 end

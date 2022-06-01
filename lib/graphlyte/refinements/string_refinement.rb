@@ -2,6 +2,7 @@
 
 module Graphlyte
   module Refinements
+    # Adds `camelize` methods to `Symbol` and `String`.
     module StringRefinement
       refine Symbol do
         def camelize

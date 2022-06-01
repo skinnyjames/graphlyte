@@ -2,6 +2,7 @@
 
 module Graphlyte
   module Refinements
+    # Adds `to_input_value` method to classes we can interpret as an input value.
     module SyntaxRefinements
       refine Hash do
         def to_input_value

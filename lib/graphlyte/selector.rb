@@ -38,6 +38,8 @@ module Graphlyte
       end
 
       editor.edit(doc)
+
+      doc
     end
 
     def edit_field(field, action)
