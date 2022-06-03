@@ -122,8 +122,8 @@ module Graphlyte
         raise err if err
       end
 
-      def punctator(token)
-        expect(:PUNCTATOR, token)
+      def punctuator(token)
+        expect(:PUNCTUATOR, token)
       end
 
       def name(value = nil)
@@ -131,12 +131,12 @@ module Graphlyte
       end
 
       def bracket(lhs, rhs, &block)
-        expect(:PUNCTATOR, lhs)
+        expect(:PUNCTUATOR, lhs)
         raise TooDeep, current.location if too_deep?
 
         ret = subfeature(&block)
 
-        expect(:PUNCTATOR, rhs)
+        expect(:PUNCTUATOR, rhs)
 
         ret
       end
