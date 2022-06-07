@@ -39,7 +39,7 @@ module Graphlyte
       t = next_token
 
       case t.type
-      when :PUNCTATOR
+      when :PUNCTUATOR
         @index -= 1
         implicit_query
       when :NAME
@@ -76,7 +76,7 @@ module Graphlyte
     def fragment_spread
       frag = Graphlyte::Syntax::FragmentSpread.new
 
-      punctator('...')
+      punctuator('...')
       frag.name = name
       frag.directives = directives
 
@@ -84,7 +84,7 @@ module Graphlyte
     end
 
     def inline_fragment
-      punctator('...')
+      punctuator('...')
       name('on')
 
       frag = Graphlyte::Syntax::InlineFragment.new
@@ -101,7 +101,7 @@ module Graphlyte
 
       field.as = optional do
         n = name
-        punctator(':')
+        punctuator(':')
 
         n
       end
@@ -122,7 +122,7 @@ module Graphlyte
       arg = Graphlyte::Syntax::Argument.new
 
       arg.name = name
-      expect(:PUNCTATOR, ':')
+      expect(:PUNCTUATOR, ':')
       arg.value = parse_value
 
       arg
@@ -136,7 +136,7 @@ module Graphlyte
         Graphlyte::Syntax::Value.new(t.value, t.type)
       when :NAME
         Graphlyte::Syntax::Value.from_name(t.value)
-      when :PUNCTATOR
+      when :PUNCTUATOR
         case t.value
         when '$'
           Graphlyte::Syntax::VariableReference.new(name)
@@ -162,7 +162,7 @@ module Graphlyte
       bracket('{', '}') do
         many do
           n = name
-          expect(:PUNCTATOR, ':')
+          expect(:PUNCTUATOR, ':')
           value = parse_value
 
           [n, value]
@@ -172,10 +172,10 @@ module Graphlyte
 
     def directives
       ret = []
-      while peek(offset: 1).punctator?('@')
+      while peek(offset: 1).punctuator?('@')
         d = Graphlyte::Syntax::Directive.new
 
-        expect(:PUNCTATOR, '@')
+        expect(:PUNCTUATOR, '@')
         d.name = name
         d.arguments = optional { arguments }
 
@@ -197,7 +197,7 @@ module Graphlyte
           var = Graphlyte::Syntax::VariableDefinition.new
 
           var.variable = variable_name
-          expect(:PUNCTATOR, ':')
+          expect(:PUNCTUATOR, ':')
           var.type = type_name
 
           var.default_value = optional { default_value }
@@ -209,13 +209,13 @@ module Graphlyte
     end
 
     def default_value
-      expect(:PUNCTATOR, '=')
+      expect(:PUNCTUATOR, '=')
 
       parse_value
     end
 
     def variable_name
-      expect(:PUNCTATOR, '$')
+      expect(:PUNCTUATOR, '$')
 
       name
     end
@@ -224,7 +224,7 @@ module Graphlyte
       ty = one_of(-> { Graphlyte::Syntax::Type.new(name) }, :list_type_name)
 
       t = peek(offset: 1)
-      ty.non_null = t.punctator?('!')
+      ty.non_null = t.punctuator?('!')
       advance if ty.non_null
 
       ty

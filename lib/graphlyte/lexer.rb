@@ -42,7 +42,7 @@ module Graphlyte
     COMMA = ','
     UNICODE_BOM = "\ufeff"
     IGNORED = [UNICODE_BOM, COMMA, *WHITESPACE].freeze
-    PUNCTATOR = ['!', '$', '&', '(', ')', '...', ':', '=', '@', '[', ']', '{', '|', '}'].freeze
+    PUNCTUATOR = ['!', '$', '&', '(', ')', '...', ':', '=', '@', '[', ']', '{', '|', '}'].freeze
     LETTERS = %w[
       A B C D E F G H I J K L M
       N O P Q R S T U V W X Y Z
@@ -259,13 +259,13 @@ module Graphlyte
     end
 
     def next_token
-      (punctator || skip_line || lexical_token).token
+      (punctuator || skip_line || lexical_token).token
     end
 
-    def punctator
-      p = one_of(PUNCTATOR)
+    def punctuator
+      p = one_of(PUNCTUATOR)
 
-      Production.new(Lexing::Token.new(:PUNCTATOR, p, current_location)) if p
+      Production.new(Lexing::Token.new(:PUNCTUATOR, p, current_location)) if p
     end
 
     def skip_line

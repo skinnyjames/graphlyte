@@ -23,14 +23,14 @@ describe Graphlyte::Parser do
       p = parser('! [ {')
 
       # succeeds
-      bang = p.optional { p.expect(:PUNCTATOR, '!') }
+      bang = p.optional { p.expect(:PUNCTUATOR, '!') }
       # partially succeeds, but fails in total, and thus backtracks
       brackets = p.optional do
-        p.expect(:PUNCTATOR, '[') + p.expect(:PUNCTATOR, '[')
+        p.expect(:PUNCTUATOR, '[') + p.expect(:PUNCTUATOR, '[')
       end
       # proof that we didn't advance after the first success
-      brace = p.optional { p.expect(:PUNCTATOR, '{') }
-      bracket = p.optional { p.expect(:PUNCTATOR, '[') }
+      brace = p.optional { p.expect(:PUNCTUATOR, '{') }
+      bracket = p.optional { p.expect(:PUNCTUATOR, '[') }
 
       expect([bang, brackets, brace, bracket]).to eq ['!', nil, nil, '[']
     end
@@ -41,7 +41,7 @@ describe Graphlyte::Parser do
       p = parser('X')
 
       r = p.one_of(
-        -> { p.expect(:PUNCTATOR, '!') },
+        -> { p.expect(:PUNCTUATOR, '!') },
         -> { "got #{p.expect(:NAME, 'X')}" },
         -> { raise 'BANG' }
       )

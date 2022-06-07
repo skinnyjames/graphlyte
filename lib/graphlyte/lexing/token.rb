@@ -23,8 +23,8 @@ module Graphlyte
         @value || @lexeme
       end
 
-      def punctator?(value)
-        @type == :PUNCTATOR && @lexeme == value
+      def punctuator?(value)
+        @type == :PUNCTUATOR && @lexeme == value
       end
     end
   end
