@@ -281,4 +281,10 @@ inspecting and manipulating GraphQL documents.
 
 ## Running tests
 
+To run tests, you will need to install a node module to spin up a GraphQL server.
+
+`cd fixture && npm i`
+
+After installing you should be able to run the tests
+
 `rspec`
