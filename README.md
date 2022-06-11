@@ -1,4 +1,4 @@
-# graphlyte
+# Graphlyte
 
 [![Coverage report](https://gitlab.com/skinnyjames/graphlyte/badges/main/coverage.svg?job=rspec)](https://skinnyjames.gitlab.io/graphlyte)
 
@@ -8,7 +8,7 @@ Parse GraphQL documents into a simple Ruby AST.
 
 Manipulate, inspect and transform GraphQL documents as data, not opaque strings.
 
-## installation
+## Installation
 
 in your Gemfile
 
@@ -274,14 +274,17 @@ There is full parsing support for the GraphQL specification. Call
 This library aims to be a client agnostic implementation for parsing, building,
 inspecting and manipulating GraphQL documents.
 
-By using Fragments and fieldsets, one can export structure re-usable components for use in sophisticated queries
-
-## todo
+## Todo
 
 * more documentation
-* refactor
 * support schema validation
 
-## running tests
+## Running tests
 
-`docker-compose build && docker-compose run test rspec`
+To run tests, you will need to install a node module to spin up a GraphQL server.
+
+`cd fixture && npm i`
+
+After installing you should be able to run the tests
+
+`rspec`
