@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
 module Graphlyte
-  Invalid = Class.new(StandardError)
+  Invalid = Class.new(StandardError) do
+    attr_reader :messages
+
+    def initialize(*messages)
+      @messages = messages
+      super(messages.join("\n"))
+    end
+  end
 
   IllegalValue = Class.new(ArgumentError)
 

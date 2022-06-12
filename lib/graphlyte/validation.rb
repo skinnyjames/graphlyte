@@ -1,3 +1,7 @@
+# frozen_string_literal: true
+
+require_relative './editors/collect_fragment_spreads'
+
 module Graphlyte
   module Validation
     # type Query {
@@ -96,11 +100,29 @@ module Graphlyte
 
         validate_duplicate_fragments(errors, fragments)
 
+        validate_fragment_spreads(errors, document)
+
         operations.each_with_object(errors) do |op, operation_errors|
           op.validate(operation_errors)
         end
 
-        raise Invalid, errors.join("\n") unless errors.empty?
+        raise Invalid.new(*errors) unless errors.empty?
+      end
+
+      def validate_fragment_spreads(errors, document)
+        spreads = Editors::CollectFragmentSpreads.new.edit(document)
+
+        spreads[:spreads].each do |hash|
+          type = hash[:ref].type_name
+
+          errors << "#{hash[:name]} target #{type} not found" unless schema.types[type]
+        end
+
+        spreads[:inline].each do |inline|
+          type = inline[:fragment].type_name
+
+          errors << "inline target #{type} not found" unless schema.types[type]
+        end
       end
 
 

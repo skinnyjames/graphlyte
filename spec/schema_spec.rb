@@ -78,4 +78,29 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
       expect(err.message).to include('ambiguous fragment name fragmentOne')
     end
   end
+
+  it 'throws if fragment spread targets are not defined', :focus do
+    query = Graphlyte.parse <<~GQL
+      query { 
+        ...fragmentOne
+      }
+
+      fragment fragmentOne on Foobar {
+        id
+        ...fragmentTwo 
+      }
+
+      fragment fragmentTwo on Todo {
+        ... on Foobar {
+          fun
+        }
+      }
+    GQL
+
+    expect { query.validate(schema) }.to raise_error do |err|
+      aggregate_failures do
+        expect(err.messages).to include('fragmentOne target Foobar not found', 'inline target Foobar not found')
+      end
+    end
+  end
 end
