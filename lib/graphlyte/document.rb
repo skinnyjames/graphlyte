@@ -7,6 +7,7 @@ require_relative './data'
 require_relative './serializer'
 require_relative './refinements/string_refinement'
 require_relative './editors/with_variables'
+require_relative './validation'
 
 module Graphlyte
   # The representation of a GraphQL document.
@@ -122,6 +123,10 @@ module Graphlyte
         variables: variables,
         operation: operation
       }.compact.to_json
+    end
+
+    def validate(schema)
+      Validation::Document.new(schema).validate(self)
     end
 
     def variable_references

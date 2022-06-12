@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Graphlyte
+  Invalid = Class.new(StandardError)
+
   IllegalValue = Class.new(ArgumentError)
 
   ParseError = Class.new(StandardError)
@@ -25,7 +27,7 @@ module Graphlyte
 
   Illegal = Class.new(ParseError) do
     def initialize(token, reason = nil)
-      msg = "Illegal token at #{token.location}: #{token.lexeme}"
+      msg = +"Illegal token at #{token.location}: #{token.lexeme}"
       msg << ", #{reason}" if reason
       super(msg)
     end

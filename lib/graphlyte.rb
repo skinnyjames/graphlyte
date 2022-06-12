@@ -33,4 +33,9 @@ module Graphlyte
   def self.dsl(schema)
     DSL.new(schema)
   end
+
+  def self.load_schema(file = nil)
+    schema = file ? File.read(file) : yield(schema_query)
+    Schema.from_schema_response(schema)
+  end
 end

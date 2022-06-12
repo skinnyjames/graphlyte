@@ -50,7 +50,8 @@ module Graphlyte
     # Users can call methods on this object to edit the document in-place, as
     # well as read information about the context of this node.
     class Action
-      attr_reader :new_nodes, :path, :definition, :parent, :document
+      attr_accessor :new_nodes
+      attr_reader :path, :definition, :parent, :document
 
       def initialize(old_node, path, parent, document)
         @new_nodes = [old_node]

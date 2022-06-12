@@ -294,6 +294,10 @@ module Graphlyte
         false
       end
 
+      def integer?
+        number? && !floating?
+      end
+
       def number?
         type == :NUMBER
       end

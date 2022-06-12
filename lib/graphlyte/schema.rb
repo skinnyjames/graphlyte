@@ -9,8 +9,7 @@ module Graphlyte
     # A directive adds metadata to a defintion.
     # See: https://spec.graphql.org/October2021/#sec-Language.Directives
     class Directive < Graphlyte::Data
-      attr_accessor :description, :name
-      attr_reader :arguments
+      attr_accessor :description, :name, :arguments
 
       def initialize(**)
         super
@@ -22,7 +21,7 @@ module Graphlyte
         new(
           name: data['name'],
           description: data['description'],
-          arguments: Schema.entity_map(InputValue, data['arguments'])
+          arguments: Schema.entity_map(InputValue, data['args'])
         )
       end
     end
@@ -79,7 +78,7 @@ module Graphlyte
     # A full type definition.
     class Type < Graphlyte::Data
       attr_accessor :kind, :name, :description
-      attr_reader :fields, :input_fields, :interfaces, :enums, :possible_types
+      attr_accessor :fields, :input_fields, :interfaces, :enums, :possible_types
 
       def initialize(**)
         super
@@ -106,8 +105,7 @@ module Graphlyte
 
     # A field definition
     class Field < Graphlyte::Data
-      attr_accessor :name, :description, :type, :is_deprecated, :deprecation_reason
-      attr_reader :arguments
+      attr_accessor :name, :description, :type, :is_deprecated, :deprecation_reason, :arguments
 
       def initialize(**)
         super
@@ -122,13 +120,13 @@ module Graphlyte
           type: TypeRef.from_schema_response(data['type']),
           is_deprecated: data['isDeprecated'],
           deprecation_reason: data['deprecationReason'],
-          arguments: Schema.entity_map(InputValue, data['arguments'])
+          arguments: Schema.entity_map(InputValue, data['args'])
         )
       end
     end
 
     attr_accessor :query_type, :mutation_type, :subscription_type
-    attr_reader :types, :directives
+    attr_accessor :types, :directives
 
     def initialize(**)
       super
@@ -139,7 +137,7 @@ module Graphlyte
 
     def self.from_schema_response(response)
       data = response.dig('data', '__schema')
-      raise Argument, 'No data' unless data
+      raise ArgumentError, 'No data' unless data
 
       new(
         query_type: data.dig('queryType', 'name'),

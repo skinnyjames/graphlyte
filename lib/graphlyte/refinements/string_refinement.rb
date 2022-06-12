@@ -8,6 +8,10 @@ module Graphlyte
         def camelize
           to_s.camelize
         end
+
+        def camelize_upper
+          to_s.camelize_upper
+        end
       end
 
       refine String do
@@ -22,6 +26,10 @@ module Graphlyte
           end.join
 
           "#{start_of_string}#{middle}#{end_of_string}"
+        end
+
+        def camelize_upper
+          camelize.gsub(/^[_a-z]/, &:upcase)
         end
       end
     end
