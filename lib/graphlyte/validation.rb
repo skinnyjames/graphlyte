@@ -125,6 +125,10 @@ module Graphlyte
           errors << "inline target #{type} not found" unless schema.types[type]
           errors << "inline target #{type} must be kind of UNION, INTERFACE, or OBJECT" unless validate_fragment_type(inline[:fragment])
         end
+
+        spreads[:unused].each do |fragment|
+          errors << "fragment #{fragment.name} on #{fragment.type_name} must be used in document"
+        end
       end
 
       def validate_fragment_type(fragment)
@@ -222,6 +226,8 @@ module Graphlyte
       end
 
       def validate(field_errors)
+        return field_errors << "#{field.name} is not defined in usage" unless field_defined?
+
         validate_selection_presence(field_errors)
         validate_required_arguments(field_errors)
         validate_unique_arguments(field_errors)
@@ -255,7 +261,7 @@ module Graphlyte
       end
 
       # @return [Boolean] is field defined on schema?
-      def defined?
+      def field_defined?
         !schema_field.nil?
       end
 

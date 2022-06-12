@@ -8,7 +8,7 @@ module Graphlyte
         editor.edit(doc)
 
         # todo: consolidate inline fragments
-        { spreads: consolidate(@fragment_spreads.dup, @fragments), inline: @inline_fragments }
+        { spreads: consolidate(@fragment_spreads.dup, @fragments), unused: unused_fragments(@fragments.dup, @fragment_spreads.dup), inline: @inline_fragments }
       end
 
       def editor
@@ -35,6 +35,15 @@ module Graphlyte
         results << { name: name, ref: ref }
 
         consolidate(spreads, fragments, results)
+      end
+
+      def unused_fragments(fragments, spreads, results = [])
+        return results if fragments.empty?
+
+        fragment = fragments.shift
+        results << fragment unless spreads.include?(fragment.name)
+
+        unused_fragments(fragments, spreads, results)
       end
     end
   end

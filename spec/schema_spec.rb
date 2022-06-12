@@ -79,7 +79,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
     end
   end
 
-  it 'throws if fragment spread targets are not defined', :focus do
+  it 'throws if fragment spread targets are not defined' do
     query = Graphlyte.parse <<~GQL
       query { 
         ...fragmentOne
@@ -118,6 +118,26 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
     expect { query.validate(schema) }.to raise_error do |err|
       aggregate_failures do
         expect(err.messages).to include('fragmentOne target String must be kind of UNION, INTERFACE, or OBJECT')
+      end
+    end
+  end
+
+  it 'throws on unused fragments', :focus do
+    query = Graphlyte.parse <<~GQL
+      query { 
+        allTodos { 
+          id
+        }
+      }
+
+      fragment one on Todo {
+        id
+      }
+    GQL
+
+    expect { query.validate(schema) }.to raise_error do |err|
+      aggregate_failures do
+        expect(err.messages).to include('fragment one on Todo must be used in document')
       end
     end
   end
