@@ -58,4 +58,24 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
       expect(err.message).to include('ambiguous argument id on field User')
     end
   end
+
+  it 'throws with duplicate fragment names' do
+    query = Graphlyte.parse <<~GQL
+      query { 
+        ...fragmentOne
+      }
+
+      fragment fragmentOne on User {
+        id
+      }
+
+      fragment fragmentOne on Todo {
+        id
+      }
+    GQL
+
+    expect { query.validate(schema) }.to raise_error do |err|
+      expect(err.message).to include('ambiguous fragment name fragmentOne')
+    end
+  end
 end

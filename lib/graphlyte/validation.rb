@@ -94,11 +94,28 @@ module Graphlyte
 
         errors = []
 
+        validate_duplicate_fragments(errors, fragments)
+
         operations.each_with_object(errors) do |op, operation_errors|
           op.validate(operation_errors)
         end
 
         raise Invalid, errors.join("\n") unless errors.empty?
+      end
+
+
+      def validate_duplicate_fragments(errors, fragments)
+        fragment_errors = duplicate_fragments(fragments).map { |frag| "ambiguous fragment name #{frag}" }
+        errors.concat(fragment_errors)
+      end
+
+      # @return [Array(String)] array of fragment names that are duplicates.
+      def duplicate_fragments(fragments)
+        results = fragments.each_with_object({}) do |frag, memo|
+          memo[frag.fragment.name] = (memo[frag.fragment.name] || 0) + 1
+        end
+
+        results.select { |_name, count| count > 1 }.keys
       end
 
       # @return [Array(String, String)] array of offenders, ex: ['Query', 'getName']
@@ -135,8 +152,9 @@ module Graphlyte
       end
 
       def fields
-        operation.selection.map do |field|
-          Field.new(type_fields[field.name], field)
+        operation.selection.filter_map do |field|
+          # todo: validate fragment spreads?
+          Field.new(type_fields[field.name], field) if field.is_a?(Syntax::Field)
         end
       end
 
