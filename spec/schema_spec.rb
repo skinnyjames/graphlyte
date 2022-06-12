@@ -122,7 +122,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
     end
   end
 
-  it 'throws on unused fragments', :focus do
+  it 'throws on unused fragments' do
     query = Graphlyte.parse <<~GQL
       query { 
         allTodos { 
@@ -139,6 +139,30 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
       aggregate_failures do
         expect(err.messages).to include('fragment one on Todo must be used in document')
       end
+    end
+  end
+
+  it 'throws on cyclomatic fragment spreads' do
+    query = Graphlyte.parse <<~GQL
+      query { 
+        ...fragmentOne
+      }
+
+      fragment fragmentOne on Todo {
+        ...fragmentTwo
+      }
+
+      fragment fragmentTwo on Todo {
+        ...fragmentThree
+      }
+
+      fragment fragmentThree on Todo { 
+         ...fragmentOne
+      }
+    GQL
+
+    expect { query.validate(schema) }.to raise_error do |err|
+      expect(err.messages).to include('fragment spread fragmentOne cannot be cyclomatic')
     end
   end
 end

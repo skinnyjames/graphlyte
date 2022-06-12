@@ -129,6 +129,10 @@ module Graphlyte
         spreads[:unused].each do |fragment|
           errors << "fragment #{fragment.name} on #{fragment.type_name} must be used in document"
         end
+
+        spreads[:cyclomatic].each do |spread|
+          errors << "fragment spread #{spread} cannot be cyclomatic"
+        end
       end
 
       def validate_fragment_type(fragment)
