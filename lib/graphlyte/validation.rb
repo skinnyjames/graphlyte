@@ -116,15 +116,22 @@ module Graphlyte
           type = hash[:ref].type_name
 
           errors << "#{hash[:name]} target #{type} not found" unless schema.types[type]
+          errors << "#{hash[:name]} target #{type} must be kind of UNION, INTERFACE, or OBJECT" unless validate_fragment_type(hash[:ref])
         end
 
         spreads[:inline].each do |inline|
           type = inline[:fragment].type_name
 
           errors << "inline target #{type} not found" unless schema.types[type]
+          errors << "inline target #{type} must be kind of UNION, INTERFACE, or OBJECT" unless validate_fragment_type(inline[:fragment])
         end
       end
 
+      def validate_fragment_type(fragment)
+        [:UNION, :INTERFACE, :OBJECT].reduce(false) do |memo, type|
+          schema.types[fragment.type_name]&.kind == type || memo
+        end
+      end
 
       def validate_duplicate_fragments(errors, fragments)
         fragment_errors = duplicate_fragments(fragments).map { |frag| "ambiguous fragment name #{frag}" }

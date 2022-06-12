@@ -103,4 +103,22 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
       end
     end
   end
+
+  it 'throws if fragment type is a scalar' do
+    query = Graphlyte.parse <<~GQL
+      query {
+        ...fragmentOne
+      }
+      
+      fragment fragmentOne on String {
+        id  
+      }
+    GQL
+
+    expect { query.validate(schema) }.to raise_error do |err|
+      aggregate_failures do
+        expect(err.messages).to include('fragmentOne target String must be kind of UNION, INTERFACE, or OBJECT')
+      end
+    end
+  end
 end
