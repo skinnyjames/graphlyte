@@ -47,7 +47,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
 
   it 'throws with duplicate argument names' do
     query = Graphlyte.parse <<~GQL
-      query {#{' '}
+      query {
         User(id: 123, id: 453) {
           id
         }
@@ -61,7 +61,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
 
   it 'throws with duplicate fragment names' do
     query = Graphlyte.parse <<~GQL
-      query {#{' '}
+      query {
         ...fragmentOne
       }
 
@@ -81,13 +81,13 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
 
   it 'throws if fragment spread targets are not defined' do
     query = Graphlyte.parse <<~GQL
-      query {#{' '}
+      query {
         ...fragmentOne
       }
 
       fragment fragmentOne on Foobar {
         id
-        ...fragmentTwo#{' '}
+        ...fragmentTwo
       }
 
       fragment fragmentTwo on Todo {
@@ -111,7 +111,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
       }
 
       fragment fragmentOne on String {
-        id#{'  '}
+        id
       }
     GQL
 
@@ -124,8 +124,8 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
 
   it 'throws on unused fragments' do
     query = Graphlyte.parse <<~GQL
-      query {#{' '}
-        allTodos {#{' '}
+      query {
+        allTodos {
           id
         }
       }
@@ -144,7 +144,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
 
   it 'throws on cyclomatic fragment spreads' do
     query = Graphlyte.parse <<~GQL
-      query {#{' '}
+      query {
         ...fragmentOne
       }
 
@@ -156,7 +156,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
         ...fragmentThree
       }
 
-      fragment fragmentThree on Todo {#{' '}
+      fragment fragmentThree on Todo {
          ...fragmentOne
       }
     GQL
