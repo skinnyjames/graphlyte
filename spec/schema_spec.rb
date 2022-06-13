@@ -162,7 +162,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
     GQL
 
     expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.messages).to include('fragment spread fragmentOne cannot be cyclomatic')
+      expect(err.messages).to include('fragment spread fragmentOne cannot be circular')
     end
   end
 end

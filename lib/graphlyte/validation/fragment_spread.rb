@@ -13,7 +13,7 @@ module Graphlyte
         validate_spreads(spreads[:spreads], errors)
         validate_inline(spreads[:inline], errors)
         validate_unused(spreads[:unused], errors)
-        validate_cyclomatic(spreads[:cyclomatic], errors)
+        validate_circular(spreads[:circular], errors)
       end
 
       private
@@ -42,9 +42,9 @@ module Graphlyte
         end
       end
 
-      def validate_cyclomatic(spreads, errors)
+      def validate_circular(spreads, errors)
         spreads.each do |spread|
-          errors << "fragment spread #{spread} cannot be cyclomatic"
+          errors << "fragment spread #{spread} cannot be circular"
         end
       end
 

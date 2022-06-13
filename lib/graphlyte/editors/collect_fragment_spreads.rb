@@ -12,7 +12,7 @@ module Graphlyte
           spreads: consolidate(@fragment_spreads.dup, @fragments.dup),
           unused: unused_fragments(@fragments.dup, @fragment_spreads.dup),
           inline: @inline_fragments,
-          cyclomatic: detect_fragment_cycles(@fragments.dup)
+          circular: detect_fragment_cycles(@fragments.dup)
         }
       end
 
