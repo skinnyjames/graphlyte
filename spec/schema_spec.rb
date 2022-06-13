@@ -185,4 +185,20 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
       expect(err.messages).to include('ambiguous operation name operationOne')
     end
   end
+
+  it 'throws on mixing named and anonymous operations', :focus do
+    query = Graphlyte.parse <<~GQL
+      {
+        allTodos { id }
+      }
+
+      query operationTwo {
+        allTodos { id }
+      }
+    GQL
+
+    expect { query.validate(schema) }.to raise_error do |err|
+      expect(err.messages).to include('cannot mix anonymous and named operations')
+    end
+  end
 end

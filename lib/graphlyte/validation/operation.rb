@@ -8,7 +8,7 @@ module Graphlyte
       include Enumerable
 
       def validate(errors)
-        validate_duplicates(errors)
+        validate_duplicates_and_mixes(errors)
 
         each { |op| op.validate(errors) }
       end
@@ -19,16 +19,25 @@ module Graphlyte
         end
       end
 
-      def validate_duplicates(errors)
+      def validate_duplicates_and_mixes(errors)
         errors.concat(duplicates.map { |name| "ambiguous operation name #{name}" })
+        errors << 'cannot mix anonymous and named operations' if has_anonymous_and_named?
+      end
+
+      def groups
+        operations.each_with_object({}) do |operation, memo|
+          memo[operation.name] = (memo[operation.name] || 0) + 1
+        end
+      end
+
+      def anonymous_and_named?
+        groups.keys.size > 1 && groups.keys.include?(nil)
       end
 
       def duplicates
-        groups = operations.each_with_object({}) do |operation, memo|
-          memo[operation.name] = (memo[operation.name] || 0) + 1 if operation.name
-        end
-
-        groups.select { |_k, v| v.size > 1 }.keys
+        groups
+          .reject { |k, _v| k.nil? }
+          .select { |_k, v| v > 1 }.keys
       end
     end
 
