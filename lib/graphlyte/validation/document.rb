@@ -20,9 +20,9 @@ module Graphlyte
       private
 
       def definitions(document)
-        values = [[], []]
+        definitions = [[], []]
 
-        document.definitions.each_with_object(values) do |definition, values|
+        document.definitions.each_with_object(definitions) do |definition, values|
           case definition
           when Syntax::Operation
             values[0] << definition
@@ -31,7 +31,7 @@ module Graphlyte
           end
         end
 
-        values
+        definitions
       end
     end
   end

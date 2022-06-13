@@ -12,16 +12,14 @@ module Graphlyte
         each { |field| field.validate(errors) }
       end
 
-      def each
+      def each(&block)
         fields = operation.selection.filter_map do |field|
           field_schema = type_fields&.dig(field.name)
 
           Field.new(schema, field_schema, field) if field.is_a?(Syntax::Field)
         end
 
-        fields.each do |field|
-          yield(field)
-        end
+        fields.each(&block)
       end
 
       def type_fields
@@ -63,11 +61,13 @@ module Graphlyte
 
         duplicates = results.select { |_name, count| count > 1 }.keys
 
-        errors.concat duplicates.map { |name| "ambiguous argument #{name} on field #{field.name}" }
+        errors.concat(duplicates.map { |name| "ambiguous argument #{name} on field #{field.name}" })
       end
 
       def validate_selection_presence(errors)
-        errors << "selection on field #{field.name} can't be empty" if subselection_must_not_be_empty? && empty_selection?
+        if subselection_must_not_be_empty? && empty_selection?
+          errors << "selection on field #{field.name} can't be empty"
+        end
         errors << "selection on field #{field.name} must be empty" if subselection_must_be_empty? && !empty_selection?
       end
 
@@ -87,7 +87,6 @@ module Graphlyte
       def subselection_must_be_empty?
         scalar? || enum?
       end
-
 
       # if selectionType is interface, union, or object
       # the subselection must not be empty

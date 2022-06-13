@@ -33,9 +33,7 @@ module Graphlyte
     end
 
     Fragment = Struct.new(:schema, :fragment) do
-      def validate(errors)
-
-      end
+      def validate(errors); end
     end
   end
 end

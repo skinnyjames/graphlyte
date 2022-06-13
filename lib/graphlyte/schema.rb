@@ -77,8 +77,7 @@ module Graphlyte
 
     # A full type definition.
     class Type < Graphlyte::Data
-      attr_accessor :kind, :name, :description
-      attr_accessor :fields, :input_fields, :interfaces, :enums, :possible_types
+      attr_accessor :kind, :name, :description, :fields, :input_fields, :interfaces, :enums, :possible_types
 
       def initialize(**)
         super
@@ -125,8 +124,7 @@ module Graphlyte
       end
     end
 
-    attr_accessor :query_type, :mutation_type, :subscription_type
-    attr_accessor :types, :directives
+    attr_accessor :query_type, :mutation_type, :subscription_type, :types, :directives
 
     def initialize(**)
       super
