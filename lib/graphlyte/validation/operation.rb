@@ -21,7 +21,7 @@ module Graphlyte
 
       def validate_duplicates_and_mixes(errors)
         errors.concat(duplicates.map { |name| "ambiguous operation name #{name}" })
-        errors << 'cannot mix anonymous and named operations' if has_anonymous_and_named?
+        errors << 'cannot mix anonymous and named operations' if anonymous_and_named?
       end
 
       def groups
