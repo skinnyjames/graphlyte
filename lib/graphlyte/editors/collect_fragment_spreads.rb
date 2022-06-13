@@ -42,7 +42,7 @@ module Graphlyte
         consolidate(spreads, fragments, results)
       end
 
-      def detect_fragment_cycles(fragments, visited = [], results = [])
+      def detect_fragment_cycles(fragments, results = [])
         fragments.each do |fragment|
           detect_fragment_cycle(fragment, results, fragments: fragments)
         end

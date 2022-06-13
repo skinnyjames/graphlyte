@@ -7,7 +7,7 @@ require_relative './data'
 require_relative './serializer'
 require_relative './refinements/string_refinement'
 require_relative './editors/with_variables'
-require_relative './validation'
+require_relative './validation/document'
 
 module Graphlyte
   # The representation of a GraphQL document.
