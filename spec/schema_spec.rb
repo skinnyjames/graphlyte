@@ -165,4 +165,24 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
       expect(err.messages).to include('fragment spread fragmentOne cannot be circular')
     end
   end
+
+  it 'throws on duplicate operations' do
+    query = Graphlyte.parse <<~GQL
+      query operationOne {
+        allTodos {
+          id
+        }
+      }
+
+      query operationOne {
+        allTodos {
+          id
+        }
+      }
+    GQL
+
+    expect { query.validate(schema) }.to raise_error do |err|
+      expect(err.messages).to include('ambiguous operation name operationOne')
+    end
+  end
 end
