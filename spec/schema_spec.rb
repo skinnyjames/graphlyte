@@ -142,7 +142,7 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
     end
   end
 
-  it 'throws on cyclomatic fragment spreads' do
+  it 'throws on circular fragment spreads' do
     query = Graphlyte.parse <<~GQL
       query {
         ...fragmentOne
