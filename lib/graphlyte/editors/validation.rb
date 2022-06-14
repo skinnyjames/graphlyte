@@ -6,7 +6,26 @@ require_relative './validators/arguments'
 
 module Graphlyte
   module Editors
-    WithContext = Struct.new(:subject, :context)
+    WithContext = Struct.new(:subject, :context) do
+      using Refinements::StringRefinement
+
+      def definition(schema, path: context.path.dup, result: nil)
+        return result if path.empty?
+        schema_path = path.shift
+
+        result = case schema_path
+                 when Syntax::Operation
+                   schema.types[schema_path.type.camelize_upper]
+                 when Syntax::Field
+                   result.fields[schema_path.name]
+                 when Syntax::Argument
+                   result.arguments[schema_path.name]
+                 end
+
+        return nil unless result
+        definition(schema, path: path, result: result)
+      end
+    end
 
     WithGroups = Struct.new(:collection) do
       def groups(group_by)

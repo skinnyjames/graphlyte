@@ -22,40 +22,20 @@ module Graphlyte
         end
 
         def validate_arg(arg, errors)
-          schema_arg(arg)
+          errors << "argument #{arg.subject.name} on field #{arg.context.parent.name} is required" unless present_if_required?(arg)
         end
 
-        def schema_arg(arg, path: path(arg), result: nil)
-          return result if path.empty?
-          schema_path = path.shift
-
-          result = case schema_path
-                   when Syntax::Operation
-                     schema.types[schema_path.type.camelize_upper]
-                   when Syntax::Field
-                     result.fields[schema_path.name]
-                   when Syntax::Argument
-                     result.arguments[schema_path.name]
-                   end
-
-          schema_arg(arg, path: path, result: result)
+        def non_null?(arg)
+          arg.definition(schema).type.kind == :NON_NULL
         end
 
-        def path(arg)
-          arg.context.path.dup
+        def default_value(arg)
+          arg.definition(schema).default_value
         end
 
-        def non_null?
-          schema_argument.type.kind == :NON_NULL
-        end
-
-        def default_value
-          schema_argument.default_value
-        end
-
-        def present_if_required?
-          if non_null? && default_value.nil?
-            !argument.nil? && argument.value.type != :NULL
+        def present_if_required?(arg)
+          if non_null?(arg) && default_value(arg).nil?
+            !arg.subject.nil? && arg.subject.value.type != :NULL
           else
             true
           end
