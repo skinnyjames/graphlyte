@@ -4,7 +4,7 @@ require_relative './argument'
 
 module Graphlyte
   module Validation
-    Fields = Struct.new(:schema, :operation) do
+    Fields = Struct.new(:schema, :selection, :schema_parent) do
       include Enumerable
       using Refinements::StringRefinement
 
@@ -13,23 +13,30 @@ module Graphlyte
       end
 
       def each(&block)
-        fields = operation.selection.filter_map do |field|
-          field_schema = type_fields&.dig(field.name)
+        fields = selection.filter_map do |field|
+          field_schema = resolve_field_schema(field.name)
 
-          Field.new(schema, field_schema, field) if field.is_a?(Syntax::Field)
+          Field.new(schema, field_schema, field, schema_parent) if field.is_a?(Syntax::Field)
         end
 
         fields.each(&block)
       end
 
-      def type_fields
-        typedef = schema.types[operation.type.camelize_upper]
+      # @return [Schema::Field]
+      def resolve_field_schema(name)
+        if schema_parent.kind == :OBJECT
+          field = schema.types[schema_parent.name]&.fields&.dig(name)
+        elsif schema_parent.kind == :LIST
+          field = schema.types[schema_parent.of_type.name].fields&.dig(name)
+        else
+          field = schema_parent.fields[name.camelize_upper]
+        end
 
-        typedef&.fields
+        field
       end
     end
 
-    Field = Struct.new(:schema, :field_schema, :field) do
+    Field = Struct.new(:schema, :field_schema, :field, :schema_parent) do
       def argument_definitions
         field_schema.arguments
       end
@@ -39,11 +46,16 @@ module Graphlyte
       end
 
       def validate(errors)
-        return errors << "#{field.name} is not defined in usage" unless field_defined?
+        return errors << "#{field.name} is not defined on #{schema_parent.unpack}" unless field_defined?
 
         validate_selection_presence(errors)
         validate_required_arguments(errors)
         validate_unique_arguments(errors)
+        validate_fields(errors)
+      end
+
+      def validate_fields(errors)
+        Fields.new(schema, field.selection, field_schema.type).validate(errors)
       end
 
       def validate_required_arguments(errors)

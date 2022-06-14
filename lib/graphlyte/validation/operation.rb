@@ -45,7 +45,7 @@ module Graphlyte
       using Refinements::StringRefinement
 
       def validate(errors)
-        Fields.new(schema, operation).validate(errors)
+        Fields.new(schema, operation.selection, schema.types['Query']).validate(errors)
       end
 
       # @return [Boolean] is operation anonymous?

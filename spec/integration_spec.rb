@@ -166,7 +166,7 @@ describe Graphlyte, :requests, :mocks do
     expect(response['data']).to eql(expected)
   end
 
-  it 'should support parsing scalars', :focus do
+  it 'should support parsing scalars' do
     query = parse(<<~GQL)
       query todos($todoFilter: TodoFilter, $seanId: ID!) {
         allTodos(filter: $todoFilter) {
