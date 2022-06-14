@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Graphlyte::Validation, :requests, :mocks do
+RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
   let(:schema) do
     Graphlyte.load_schema do |query|
       request(query)
