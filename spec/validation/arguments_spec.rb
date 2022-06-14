@@ -27,7 +27,6 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
     end
   end
 
-
   it 'throws with duplicate argument names' do
     query = Graphlyte.parse <<~GQL
       query {
@@ -41,5 +40,4 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       expect(err.message).to include('ambiguous argument id on field User')
     end
   end
-
 end

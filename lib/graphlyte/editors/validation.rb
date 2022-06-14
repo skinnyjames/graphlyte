@@ -7,11 +7,13 @@ require_relative './validators/fields'
 
 module Graphlyte
   module Editors
-    WithContext = Struct.new(:subject, :context) do
+    # context helpers
+    module ContextHelpers
       using Refinements::StringRefinement
 
       def definition(schema, path: context.path.dup, result: nil)
         return result if path.empty?
+
         schema_path = path.shift
 
         result = case schema_path
@@ -24,23 +26,35 @@ module Graphlyte
                  end
 
         return nil unless result
+
         definition(schema, path: path, result: result)
       end
 
       def parent_name
-        context.parent.class == Syntax::InlineFragment ? context.parent.type_name : context.parent.name
+        case context.parent
+        when Syntax::InlineFragment, Syntax::Fragment
+          context.parent.type_name
+        else
+          context.parent.name
+        end
       end
 
       def resolve_field_schema(result, field, schema:, rest:)
         if result.is_a?(Schema::Field)
-          schema_field = schema.types[result.name]&.fields[field.name] if result.type.kind == :OBJECT
+          schema_field = schema.types[result.name]&.fields&.dig(field.name) if result.type.kind == :OBJECT
 
           return nil if schema_field.nil?
+
           return schema_field.type.kind == :LIST && !rest.zero? ? schema.types[schema_field.type.unpack] : schema_field
         end
 
         result.fields[field.name]
       end
+    end
+
+    WithContext = Struct.new(:subject, :context) do
+      using Refinements::StringRefinement
+      include ContextHelpers
     end
 
     WithGroups = Struct.new(:collection) do
@@ -56,6 +70,7 @@ module Graphlyte
       end
     end
 
+    # Validation editor
     class Validation
       attr_reader(
         :schema,
@@ -106,14 +121,14 @@ module Graphlyte
       end
 
       def collect_fragment(fragment, action, with_context: WithContext.new(fragment, action))
-        if fragment.class == Syntax::InlineFragment
+        if fragment.instance_of?(Syntax::InlineFragment)
           fragment_behaviors.add_inline(with_context)
         else
           fragment_behaviors.add_fragment(with_context)
         end
       end
 
-      def collect_operation(op, action, with_context: WithContext.new(op, action))
+      def collect_operation(operation, action, with_context: WithContext.new(operation, action))
         operations << with_context
       end
 
@@ -125,9 +140,7 @@ module Graphlyte
         arguments << with_context
       end
 
-      def collect_variable(var, action)
-
-      end
+      def collect_variable(var, action); end
     end
   end
 end

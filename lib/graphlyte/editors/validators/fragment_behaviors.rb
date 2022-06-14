@@ -1,8 +1,9 @@
-# frozen_string_literal :true
+# frozen_string_literal: true
 
 module Graphlyte
   module Editors
     module Validators
+      # fragment validator
       class FragmentBehaviors
         attr_reader :schema, :fragments, :spreads, :inline
 
@@ -57,11 +58,15 @@ module Graphlyte
         end
 
         def validate_circular_refs(errors)
-          errors.concat(detect_fragment_cycles(fragment_subjects).map { |name| "fragment spread #{name} cannot be circular" })
+          errors.concat(detect_fragment_cycles(fragment_subjects).map do |name|
+                          "fragment spread #{name} cannot be circular"
+                        end)
         end
 
         def validate_unused(errors)
-          unused_errors = unused(fragment_subjects, spread_subjects).map { |fragment| "fragment #{fragment.name} on #{fragment.type_name} must be used in document" }
+          unused_errors = unused(fragment_subjects, spread_subjects).map do |fragment|
+            "fragment #{fragment.name} on #{fragment.type_name} must be used in document"
+          end
           errors.concat(unused_errors)
         end
 

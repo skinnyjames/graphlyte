@@ -35,11 +35,10 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
     end
   end
 
-  it 'throws when field is not defined on type (fragments)' do
+  it 'throws when field is not defined on type (fragments)', :focus do
     query = Graphlyte.parse <<~GQL
       query {
         User(id: 123) {
-          HowdyHo
           Todos { ...hello }
         }
       }
@@ -51,7 +50,7 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
     GQL
 
     expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.messages).to include('HowdyHo is not defined on User', 'foobar is not defined on Todo')
+      expect(err.messages).to include('foobar is not defined on Todo')
     end
   end
 end

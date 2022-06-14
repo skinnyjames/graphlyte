@@ -3,6 +3,7 @@
 module Graphlyte
   module Editors
     module Validators
+      # Operations validator
       class Operations
         attr_reader :schema, :operations
 
@@ -26,9 +27,7 @@ module Graphlyte
         # @return [Void]
         def validate_mixed_operation_types(errors)
           keys = with_groups.groups(:name).keys
-          if keys.size > 1 && keys.include?(nil)
-            errors << 'cannot mix anonymous and named operations'
-          end
+          errors << 'cannot mix anonymous and named operations' if keys.size > 1 && keys.include?(nil)
         end
 
         # add any duplicate messages to errors

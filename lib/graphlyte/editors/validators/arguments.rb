@@ -3,6 +3,7 @@
 module Graphlyte
   module Editors
     module Validators
+      # arguments validator
       class Arguments
         using Refinements::StringRefinement
 
@@ -24,11 +25,15 @@ module Graphlyte
         end
 
         def validate_dupes(errors)
-          errors.concat(WithGroups.new(args.map(&:subject)).duplicates(:name).map { |name| "ambiguous argument #{name} on field #{args.first.parent_name}" })
+          errors.concat(WithGroups.new(args.map(&:subject)).duplicates(:name).map do |name|
+                          "ambiguous argument #{name} on field #{args.first.parent_name}"
+                        end)
         end
 
         def validate_arg(arg, errors)
-          errors << "argument #{arg.subject.name} on field #{arg.context.parent.name} is required" unless present_if_required?(arg)
+          return if present_if_required?(arg)
+
+          errors << "argument #{arg.subject.name} on field #{arg.context.parent.name} is required"
         end
 
         def non_null?(arg)

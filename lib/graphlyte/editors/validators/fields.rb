@@ -3,6 +3,7 @@
 module Graphlyte
   module Editors
     module Validators
+      # fields validator
       class Fields
         attr_reader :schema, :fields
 
@@ -31,7 +32,9 @@ module Graphlyte
           definition.arguments.each do |name, input_value|
             arg_or_nil = field.subject.arguments.find { |arg| arg.name == name }
 
-            errors << "argument #{name} on field #{field.subject.name} is required" unless has_required_arg(input_value, arg_or_nil)
+            errors << "argument #{name} on field #{field.subject.name} is required" unless required_arg?(
+              input_value, arg_or_nil
+            )
           end
         end
 
@@ -43,7 +46,7 @@ module Graphlyte
           end
         end
 
-        def has_required_arg(input_value, arg_or_nil)
+        def required_arg?(input_value, arg_or_nil)
           if input_value.type.kind == :NON_NULL && input_value.default_value.nil?
             !arg_or_nil.nil? && arg_or_nil.value.type != :NULL
           else
@@ -52,7 +55,7 @@ module Graphlyte
         end
 
         def subselection_must_be_empty?(defn)
-          [:SCALAR, :ENUM].include?(defn.type.kind)
+          %i[SCALAR ENUM].include?(defn.type.kind)
         end
 
         # if selectionType is interface, union, or object
@@ -60,7 +63,7 @@ module Graphlyte
         #
         # @return [Boolean] should selection type be populated?
         def subselection_must_not_be_empty?(defn)
-          [:INTERFACE, :UNION, :OBJECT].include?(defn.type.kind)
+          %i[INTERFACE UNION OBJECT].include?(defn.type.kind)
         end
       end
     end
