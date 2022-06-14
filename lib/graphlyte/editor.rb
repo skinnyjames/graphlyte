@@ -6,7 +6,7 @@ module Graphlyte
   # Walk the document tree and edit or collect data.
   #
   # This is the general purpose recursive transformer for
-  # syntax trees, used to write various validation and
+  # syntax trees, used to write various validators and
   # transformation passes. See `lib/graphlyte/editors`
   #
   # Usage

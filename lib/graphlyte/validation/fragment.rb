@@ -33,7 +33,9 @@ module Graphlyte
     end
 
     Fragment = Struct.new(:schema, :fragment) do
-      def validate(errors); end
+      def validate(errors)
+        # Fields.new(schema, fragment.selection, schema.types['Query']).validate(errors)
+      end
     end
   end
 end
