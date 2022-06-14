@@ -3,6 +3,7 @@
 require_relative './validators/operations'
 require_relative './validators/fragment_behaviors'
 require_relative './validators/arguments'
+require_relative './validators/fields'
 
 module Graphlyte
   module Editors
@@ -17,13 +18,28 @@ module Graphlyte
                  when Syntax::Operation
                    schema.types[schema_path.type.camelize_upper]
                  when Syntax::Field
-                   result.fields[schema_path.name]
+                   resolve_field_schema(result, schema_path, schema: schema, rest: path.size)
                  when Syntax::Argument
                    result.arguments[schema_path.name]
                  end
 
         return nil unless result
         definition(schema, path: path, result: result)
+      end
+
+      def parent_name
+        context.parent.class == Syntax::InlineFragment ? context.parent.type_name : context.parent.name
+      end
+
+      def resolve_field_schema(result, field, schema:, rest:)
+        if result.is_a?(Schema::Field)
+          schema_field = schema.types[result.name]&.fields[field.name] if result.type.kind == :OBJECT
+
+          return nil if schema_field.nil?
+          return schema_field.type.kind == :LIST && !rest.zero? ? schema.types[schema_field.type.unpack] : schema_field
+        end
+
+        result.fields[field.name]
       end
     end
 
@@ -54,7 +70,7 @@ module Graphlyte
         @schema = schema
         @operations = Validators::Operations.new(schema)
         @fragment_behaviors = Validators::FragmentBehaviors.new(schema)
-        @fields = []
+        @fields = Validators::Fields.new(schema)
         @arguments = Validators::Arguments.new(schema)
         @variables = []
       end
@@ -68,6 +84,7 @@ module Graphlyte
       def validate(errors = [])
         operations.validate(errors)
         fragment_behaviors.validate(errors)
+        fields.validate(errors)
         arguments.validate(errors)
 
         raise Invalid.new(*errors) unless errors.empty?
@@ -101,7 +118,7 @@ module Graphlyte
       end
 
       def collect_field(field, action)
-
+        fields << WithContext.new(field, action)
       end
 
       def collect_argument(arg, action, with_context: WithContext.new(arg, action))

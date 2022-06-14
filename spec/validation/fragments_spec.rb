@@ -27,7 +27,7 @@ RSpec.describe Graphlyte::Validation, :requests, :mocks do
     end
   end
 
-  it 'throws if fragment spread targets are not defined' do
+  it 'throws if fragment spread targets are not defined', :focus do
     query = Graphlyte.parse <<~GQL
       query {
         ...fragmentOne

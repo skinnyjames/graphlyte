@@ -18,7 +18,13 @@ module Graphlyte
         end
 
         def validate(errors)
+          validate_dupes(errors)
+
           args.each { |arg| validate_arg(arg, errors) }
+        end
+
+        def validate_dupes(errors)
+          errors.concat(WithGroups.new(args.map(&:subject)).duplicates(:name).map { |name| "ambiguous argument #{name} on field #{args.first.parent_name}" })
         end
 
         def validate_arg(arg, errors)
