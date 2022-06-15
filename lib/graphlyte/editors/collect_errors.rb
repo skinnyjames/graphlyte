@@ -39,7 +39,7 @@ module Graphlyte
       end
 
       def readable_errors(errors)
-        errors.each_with_index.map { |e, i| "#{i + 1} #{e}" }.join("\n")
+        errors.each_with_index.map { |e, i| "#{i + 1}.) #{e}" }.join("\n")
       end
 
       def readable_path(path, str = [], space = 0)
