@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
-require_relative './validators/operations'
-require_relative './validators/fragment_behaviors'
-require_relative './validators/arguments'
-require_relative './validators/fields'
+require_relative './validators/operation'
+require_relative './validators/fragment'
+require_relative './validators/document'
+require_relative './validators/field'
+require_relative './validators/fragment_spread'
+require_relative './validators/inline_fragment'
 
 module Graphlyte
   module Editors
@@ -11,6 +13,7 @@ module Graphlyte
     module ContextHelpers
       using Refinements::StringRefinement
 
+      # given a syntax path, it will return an associated schema object
       def definition(schema, path: context.path.dup, result: nil)
         return result if path.empty?
 
@@ -57,9 +60,9 @@ module Graphlyte
       include ContextHelpers
     end
 
-    WithGroups = Struct.new(:collection) do
+    WithGroups = Struct.new(:members) do
       def groups(group_by)
-        collection.each_with_object({}) do |item, memo|
+        members.each_with_object({}) do |item, memo|
           memo[item.send(group_by)] = (memo[item.send(group_by)] || 0) + 1
         end
       end
@@ -71,76 +74,84 @@ module Graphlyte
     end
 
     # Validation editor
+    # Will add schema level errors to the
+    # Syntax tree objects
     class Validation
       attr_reader(
         :schema,
-        :operations,
-        :fragment_behaviors,
-        :fields,
-        :arguments,
-        :variables
+        :fragments,
+        :spreads,
+        :inline
       )
 
       def initialize(schema)
         @schema = schema
-        @operations = Validators::Operations.new(schema)
-        @fragment_behaviors = Validators::FragmentBehaviors.new(schema)
-        @fields = Validators::Fields.new(schema)
-        @arguments = Validators::Arguments.new(schema)
-        @variables = []
+        @spreads = []
+        @fragments = []
+        @inline = []
       end
 
       def edit(document)
+        Validators::Document.new(schema, document).annotate
+
+        fragment_collector.edit(document)
         editor.edit(document)
 
         self
       end
 
-      def validate(errors = [])
-        operations.validate(errors)
-        fragment_behaviors.validate(errors)
-        fields.validate(errors)
-        arguments.validate(errors)
-
-        raise Invalid.new(*errors) unless errors.empty?
+      def fragment_collector
+        Editor
+          .top_down
+          .on_fragment_spread(&method(:collect_fragment_spread))
+          .on_fragment(&method(:collect_fragment))
       end
 
       def editor
         Editor
           .top_down
-          .on_fragment_spread(&method(:collect_fragment_spread))
-          .on_fragment(&method(:collect_fragment))
-          .on_operation(&method(:collect_operation))
-          .on_field(&method(:collect_field))
-          .on_argument(&method(:collect_argument))
-          .on_variable(&method(:collect_variable))
+          .on_operation(&method(:validate_operation))
+          .on_fragment(&method(:validate_fragment))
+          .on_fragment_spread(&method(:validate_fragment_spread))
+          .on_field(&method(:validate_field))
+          .on_argument(&method(:validate_argument))
+          .on_variable(&method(:validate_variable))
       end
 
       def collect_fragment_spread(spread, action, with_context: WithContext.new(spread, action))
-        fragment_behaviors.add_spread(with_context)
+        spreads << with_context
       end
 
       def collect_fragment(fragment, action, with_context: WithContext.new(fragment, action))
         if fragment.instance_of?(Syntax::InlineFragment)
-          fragment_behaviors.add_inline(with_context)
+          inline << with_context
         else
-          fragment_behaviors.add_fragment(with_context)
+          fragments << with_context
         end
       end
 
-      def collect_operation(operation, action, with_context: WithContext.new(operation, action))
-        operations << with_context
+      def validate_fragment(frag, action, with_context: WithContext.new(frag, action))
+        frag.instance_of?(Syntax::InlineFragment) ?
+          Validators::InlineFragment.new(schema, with_context).annotate
+          : Validators::Fragment.new(schema, with_context, fragments, spreads).annotate
       end
 
-      def collect_field(field, action)
-        fields << WithContext.new(field, action)
+      def validate_fragment_spread(spread, action, with_context: WithContext.new(spread, action))
+        Validators::FragmentSpread.new(schema, with_context, fragments).annotate
       end
 
-      def collect_argument(arg, action, with_context: WithContext.new(arg, action))
-        arguments << with_context
+      def validate_operation(operation, action, with_context: WithContext.new(operation, action))
+        Validators::Operation.new(schema, with_context).annotate
       end
 
-      def collect_variable(var, action); end
+      def validate_field(field, action)
+        Validators::Field.new(schema, WithContext.new(field, action)).annotate
+      end
+
+      def validate_argument(arg, action, with_context: WithContext.new(arg, action))
+      end
+
+      def validate_variable(var, action); end
     end
   end
 end

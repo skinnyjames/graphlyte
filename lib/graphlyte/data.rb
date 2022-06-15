@@ -19,11 +19,14 @@ module Graphlyte
       @attributes ||= [].to_set
     end
 
+    attr_reader :errors
+
     # Permissive constructor: ignores unknown attributes
     def initialize(**kwargs)
       self.class.attributes.each do |arg|
         send(:"#{arg}=", kwargs[arg]) if kwargs.key?(arg)
       end
+      @errors = []
     end
 
     def eql?(other)

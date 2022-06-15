@@ -99,6 +99,10 @@ module Graphlyte
     end
 
     InlineFragment = Struct.new(:type_name, :directives, :selection) do
+      def errors
+        @errors ||= []
+      end
+
       def simple?
         false
       end

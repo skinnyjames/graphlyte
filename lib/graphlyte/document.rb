@@ -126,7 +126,7 @@ module Graphlyte
     end
 
     def validate(schema)
-      Editors::Validation.new(schema).edit(self).validate
+      Editors::Validation.new(schema).edit(self)
     end
 
     def variable_references
