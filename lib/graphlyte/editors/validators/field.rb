@@ -24,7 +24,7 @@ module Graphlyte
 
         def validate_duplicate_arguments
           dupes = WithGroups.new(field.subject.arguments).duplicates(:name)
-          field.subject.errors << "has ambiguous args: #{dupes.join(', ')}"
+          field.subject.errors << "has ambiguous args: #{dupes.join(', ')}" if dupes.any?
         end
 
         def validate_required_arguments

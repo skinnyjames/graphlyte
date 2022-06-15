@@ -73,6 +73,23 @@ module Graphlyte
       end
     end
 
+    class ErrorCollector
+      attr_reader :errors
+
+      def initialize
+        @errors = []
+      end
+
+      def editor
+        Editor
+          .top_down
+          .on_operation
+          .on_fragment
+          .on_field
+          .on_argument
+      end
+    end
+
     # Validation editor
     # Will add schema level errors to the
     # Syntax tree objects
@@ -97,7 +114,7 @@ module Graphlyte
         fragment_collector.edit(document)
         editor.edit(document)
 
-        self
+        document
       end
 
       def fragment_collector

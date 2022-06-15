@@ -8,6 +8,7 @@ require_relative './serializer'
 require_relative './refinements/string_refinement'
 require_relative './editors/with_variables'
 require_relative './editors/validation'
+require_relative './editors/collect_errors'
 
 module Graphlyte
   # The representation of a GraphQL document.
@@ -127,6 +128,10 @@ module Graphlyte
 
     def validate(schema)
       Editors::Validation.new(schema).edit(self)
+    end
+
+    def validation_errors
+      Editors::CollectErrors.new.edit(self).errors.join
     end
 
     def variable_references
