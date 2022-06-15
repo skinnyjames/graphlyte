@@ -7,11 +7,51 @@ RSpec.describe Graphlyte::Schema, :requests, :mocks do
     end
   end
 
-  it 'does not throw when fields are valid' do
+  it 'throws when field subselection is empty' do
     query = Graphlyte.query do |q|
-      q.Todo(id: 123, &:id)
+      q.User(id: nil)
     end
 
-    expect { query.validate(schema) }.not_to raise_error
+    query.validate(schema).validation_errors
+  end
+
+  it 'does not throw when fields are valid', :focus do
+    query = Graphlyte.parse <<~GQL
+      query { 
+        User(id: null) { 
+          Todos {
+            ... on String { id }
+          }
+        }
+      }
+    GQL
+
+    puts query.validate(schema).validation_errors
+
+    query
+  end
+
+  it 'annotates circular fragments', :focus do
+    query = Graphlyte.parse <<~GQL
+      query { 
+        User(id: 123) {
+          ...fragmentOne
+        }  
+      }
+
+      fragment fragmentOne on User {
+        ...fragmentTwo
+      }
+
+      fragment fragmentTwo on User {
+        ...fragmentThree
+      }
+
+      fragment fragmentThree on User {
+        ...fragmentOne
+      }
+    GQL
+
+    puts query.validate(schema).validation_errors
   end
 end
