@@ -22,7 +22,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
   it 'annotates invalid types on fields' do
     query = Graphlyte.parse <<~GQL
       query something {
-        User(id: 123) {#{' '}
+        User(id: 123) {
           foobar
         }
       }
@@ -36,14 +36,13 @@ RSpec.describe 'Field validation', :requests, :mocks do
     ERROR
   end
 
-  it 'annotates invalid types on lists', :focus do
+  it 'no errors for correct fields on lists' do
     query = Graphlyte.parse <<~GQL
       query something {
         User(id: 123) {
           ...fragmentOne
         }
       }
-      #{' '}
       fragment fragmentOne on User {
         Todos {
           id
@@ -51,15 +50,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
       }
     GQL
 
-    puts query.validate(schema).validation_errors
-
-    # expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-    #   Error on something
-    #     User
-    #       Todos
-    #         foobar
-    #   1.) field foobar is not defined on Todos
-    # ERROR
+    expect(query.validate(schema).validation_errors).to be(nil)
   end
 
   it 'annotates invalid types on fragments' do
@@ -69,7 +60,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
           Todos {
             id
             foobar
-          }#{' '}
+          }
         }
       }
     GQL

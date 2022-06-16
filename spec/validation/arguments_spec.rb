@@ -17,6 +17,12 @@ RSpec.describe 'Argument validation', :requests, :mocks do
       Error on something
         User
       1.) argument id on field User is required
+
+      Error on something
+        User
+          id
+            null
+      1.) value null must be of ID - got NULL
     ERRORS
   end
 

@@ -27,13 +27,19 @@ module Graphlyte
           .on_fragment_spread(&method(:handle_errors))
           .on_field(&method(:handle_errors))
           .on_argument(&method(:handle_errors))
+          .on_value(&method(:handle_errors))
       end
 
       def handle_errors(syntax, context)
         return unless syntax.errors.any?
 
         path = context.path.map do |obj|
-          obj.respond_to?(:name) ? (obj.name || obj.type_name) : obj.type_name
+          case obj
+          when Syntax::Value
+            obj.value
+          else
+            obj.respond_to?(:name) ? (obj.name || obj.type_name) : obj.type_name
+          end
         end
 
         errors << <<~ERROR

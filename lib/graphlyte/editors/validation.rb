@@ -32,7 +32,14 @@ module Graphlyte
                  when Syntax::Field
                    resolve_field_schema(result, syntax, schema: schema)
                  when Syntax::Argument
+                   # todo: handle complex input objects
                    result.arguments[syntax.name]
+                 when Syntax::Value
+                   if result.instance_of?(Schema::InputValue)
+                     defn = schema.types[result.type.unpack]
+                     result
+                   end
+                   schema.types[result.type.unpack]
                  end
         return nil unless result
 
@@ -49,6 +56,8 @@ module Graphlyte
       end
 
       def resolve_field_schema(result, syntax, schema:)
+        return schema.types['__Schema'] if syntax.name == '__schema' && result.name == 'Query'
+
         if result.instance_of?(Schema::Field)
           field_def = schema.types[result.type.unpack]&.fields&.dig(syntax.name)
 
@@ -119,6 +128,7 @@ module Graphlyte
           .on_fragment_spread(&method(:validate_fragment_spread))
           .on_field(&method(:validate_field))
           .on_argument(&method(:validate_argument))
+          .on_value(&method(:validate_value))
           .on_variable(&method(:validate_variable))
       end
 
@@ -155,6 +165,10 @@ module Graphlyte
       end
 
       def validate_argument(arg, action, with_context: WithContext.new(arg, action)); end
+
+      def validate_value(val, action, with_context: WithContext.new(val, action))
+        Validators::Value.new(schema, with_context).annotate
+      end
 
       def validate_variable(var, action); end
     end

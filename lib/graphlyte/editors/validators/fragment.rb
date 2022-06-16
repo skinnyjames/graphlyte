@@ -38,21 +38,21 @@ module Graphlyte
         end
 
         def circular_references(results = [])
-          detect_fragment_cycle(fragment.subject, results, fragments: fragments_subjects)
+          detect_fragment_cycles(fragment.subject, results, fragments: fragments_subjects)
         end
 
-        def detect_fragment_cycle(fragment_definition, results, visited: [fragment.subject.name], fragments: nil)
+        def detect_fragment_cycles(fragment_definition, results, visited: [fragment.subject.name], fragments: nil)
           get_spread_descendants(fragment_definition.selection).each do |spread|
             if visited.include?(spread)
-              visited << spread
               results << spread
+              visited << spread
               break
             end
             visited << spread
 
             next_fragment_definition = fragments.find { |f| f.name == spread }
 
-            detect_fragment_cycle(next_fragment_definition, results, visited: visited, fragments: fragments)
+            detect_fragment_cycles(next_fragment_definition, results, visited: visited, fragments: fragments)
           end
           [!results.empty?, visited]
         end
@@ -63,8 +63,8 @@ module Graphlyte
           fields.each do |field|
             if field.instance_of?(Syntax::FragmentSpread)
               results << field.name
-            else
-              get_spread_descendants(field.selection, results)
+            # else
+            #   get_spread_descendants(field.selection, results)
             end
           end
 
