@@ -21,21 +21,19 @@ module Graphlyte
       # Returns some kind of def for a given Syntax object
       # @return [Schema::Field | Schema::Type] result
       def definition(schema, path: context.path.dup, result: nil)
-        if path.empty?
-          return result
-        end
+        return result if path.empty?
 
         syntax = path.shift
         result = case syntax
-                     when Syntax::Operation
-                       schema.types[syntax.type.camelize_upper]
-                     when Syntax::Fragment
-                       schema.types[syntax.type_name]
-                     when Syntax::Field
-                       resolve_field_schema(result, syntax, schema: schema)
-                     when Syntax::Argument
-                       result.arguments[syntax.name]
-                     end
+                 when Syntax::Operation
+                   schema.types[syntax.type.camelize_upper]
+                 when Syntax::Fragment
+                   schema.types[syntax.type_name]
+                 when Syntax::Field
+                   resolve_field_schema(result, syntax, schema: schema)
+                 when Syntax::Argument
+                   result.arguments[syntax.name]
+                 end
         return nil unless result
 
         definition(schema, path: path || [], result: result)
@@ -50,7 +48,7 @@ module Graphlyte
         end
       end
 
-      def resolve_field_schema(result, syntax, schema:) # rubocop:disable Metrics/AbcSize
+      def resolve_field_schema(result, syntax, schema:)
         if result.instance_of?(Schema::Field)
           field_def = schema.types[result.type.unpack]&.fields&.dig(syntax.name)
 

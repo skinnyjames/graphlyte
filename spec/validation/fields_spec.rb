@@ -22,7 +22,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
   it 'annotates invalid types on fields' do
     query = Graphlyte.parse <<~GQL
       query something {
-        User(id: 123) { 
+        User(id: 123) {#{' '}
           foobar
         }
       }
@@ -43,7 +43,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
           ...fragmentOne
         }
       }
-       
+      #{' '}
       fragment fragmentOne on User {
         Todos {
           id
@@ -69,7 +69,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
           Todos {
             id
             foobar
-          } 
+          }#{' '}
         }
       }
     GQL
