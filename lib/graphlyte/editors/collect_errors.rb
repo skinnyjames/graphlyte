@@ -2,6 +2,8 @@
 
 module Graphlyte
   module Editors
+    # Editor to collect errors
+    # from Syntax tree objects
     class CollectErrors
       attr_reader :errors
 
@@ -10,6 +12,8 @@ module Graphlyte
       end
 
       def edit(doc)
+        handle_errors(doc, Struct.new(:path).new([Struct.new(:name).new('document')]))
+
         editor.edit(doc)
 
         self
@@ -28,13 +32,12 @@ module Graphlyte
       def handle_errors(syntax, context)
         return unless syntax.errors.any?
 
-        path = context.path.map do |syntax|
-          syntax.respond_to?(:name) ? syntax.name : syntax.type_name
+        path = context.path.map do |obj|
+          obj.respond_to?(:name) ? (obj.name || obj.type_name) : obj.type_name
         end
 
         errors << <<~ERROR
-          Error on #{readable_path(path)}\n-----\n#{readable_errors(syntax.errors)}
-
+          Error on #{readable_path(path)}\n#{readable_errors(syntax.errors)}
         ERROR
       end
 

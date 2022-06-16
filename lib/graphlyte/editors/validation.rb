@@ -14,6 +14,7 @@ module Graphlyte
       using Refinements::StringRefinement
 
       # given a syntax path, it will return an associated schema object
+      # todo: this doesn't work right now
       def definition(schema, path: context.path.dup, result: nil)
         return result if path.empty?
 
@@ -42,7 +43,7 @@ module Graphlyte
         end
       end
 
-      def resolve_field_schema(result, field, schema:, rest:)
+      def resolve_field_schema(result, field, schema:, rest:) # rubocop:disable Metrics/AbcSize
         if result.is_a?(Schema::Field)
           schema_field = schema.types[result.name]&.fields&.dig(field.name) if result.type.kind == :OBJECT
 
@@ -60,9 +61,9 @@ module Graphlyte
       include ContextHelpers
     end
 
-    WithGroups = Struct.new(:members) do
+    WithGroups = Struct.new(:items) do
       def groups(group_by)
-        members.each_with_object({}) do |item, memo|
+        items.each_with_object({}) do |item, memo|
           memo[item.send(group_by)] = (memo[item.send(group_by)] || 0) + 1
         end
       end
@@ -70,23 +71,6 @@ module Graphlyte
       def duplicates(group_by)
         groups(group_by)
           .filter_map { |k, v| k if v > 1 }
-      end
-    end
-
-    class ErrorCollector
-      attr_reader :errors
-
-      def initialize
-        @errors = []
-      end
-
-      def editor
-        Editor
-          .top_down
-          .on_operation
-          .on_fragment
-          .on_field
-          .on_argument
       end
     end
 
@@ -148,9 +132,11 @@ module Graphlyte
       end
 
       def validate_fragment(frag, action, with_context: WithContext.new(frag, action))
-        frag.instance_of?(Syntax::InlineFragment) ?
+        if frag.instance_of?(Syntax::InlineFragment)
           Validators::InlineFragment.new(schema, with_context).annotate
-          : Validators::Fragment.new(schema, with_context, fragments, spreads).annotate
+        else
+          Validators::Fragment.new(schema, with_context, fragments, spreads).annotate
+        end
       end
 
       def validate_fragment_spread(spread, action, with_context: WithContext.new(spread, action))
@@ -165,8 +151,7 @@ module Graphlyte
         Validators::Field.new(schema, WithContext.new(field, action)).annotate
       end
 
-      def validate_argument(arg, action, with_context: WithContext.new(arg, action))
-      end
+      def validate_argument(arg, action, with_context: WithContext.new(arg, action)); end
 
       def validate_variable(var, action); end
     end

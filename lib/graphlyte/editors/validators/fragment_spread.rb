@@ -3,6 +3,7 @@
 module Graphlyte
   module Editors
     module Validators
+      # annotates Syntax::FragmentSpread with errors
       class FragmentSpread
         attr_reader :schema, :spread, :fragments
 
@@ -14,9 +15,12 @@ module Graphlyte
 
         def annotate
           fragment = matching_fragment
-          spread.subject.errors << "has no matching fragment" unless matching_fragment
+
+          spread.subject.errors << 'has no matching fragment' unless matching_fragment
           spread.subject.errors << "target #{fragment.type_name} not found" unless schema.types[fragment.type_name]
-          spread.subject.errors << "target #{fragment.type_name} must be kind of UNION, INTERFACE, or OBJECT" unless valid_fragment_type?(fragment)
+          return if valid_fragment_type?(fragment)
+
+          spread.subject.errors << "target #{fragment.type_name} must be kind of UNION, INTERFACE, or OBJECT"
         end
 
         def matching_fragment

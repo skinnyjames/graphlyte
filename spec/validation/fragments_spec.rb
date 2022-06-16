@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
+RSpec.describe 'Fragment validation', :requests, :mocks do
   let(:schema) do
     Graphlyte.load_schema do |query|
       request(query)
@@ -22,14 +22,18 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.message).to include('ambiguous fragment name fragmentOne')
-    end
+    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
+      Error on fragmentOne
+      1.) ambiguous name fragmentOne
+
+      Error on fragmentOne
+      1.) ambiguous name fragmentOne
+    ERRORS
   end
 
   it 'throws if fragment spread targets are not defined' do
     query = Graphlyte.parse <<~GQL
-      query {
+      query something {
         ...fragmentOne
       }
 
@@ -45,16 +49,22 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      aggregate_failures do
-        expect(err.messages).to include('fragmentOne target Foobar not found', 'inline target Foobar not found')
-      end
-    end
+    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
+      Error on something
+        fragmentOne
+      1.) target Foobar not found
+      2.) target Foobar must be kind of UNION, INTERFACE, or OBJECT
+
+      Error on fragmentTwo
+        Foobar
+      1.) inline target Foobar not found
+      2.) inline target Foobar must be kind of UNION, INTERFACE, or OBJECT
+    ERRORS
   end
 
   it 'throws if fragment type is a scalar' do
     query = Graphlyte.parse <<~GQL
-      query {
+      query query {
         ...fragmentOne
       }
 
@@ -63,11 +73,11 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      aggregate_failures do
-        expect(err.messages).to include('fragmentOne target String must be kind of UNION, INTERFACE, or OBJECT')
-      end
-    end
+    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
+      Error on query
+        fragmentOne
+      1.) target String must be kind of UNION, INTERFACE, or OBJECT
+    ERRORS
   end
 
   it 'throws on unused fragments' do
@@ -83,11 +93,10 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      aggregate_failures do
-        expect(err.messages).to include('fragment one on Todo must be used in document')
-      end
-    end
+    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
+      Error on one
+      1.) fragment must be used
+    ERRORS
   end
 
   it 'throws on circular fragment spreads' do
@@ -109,8 +118,15 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.messages).to include('fragment spread fragmentOne cannot be circular')
-    end
+    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
+      Error on fragmentOne
+      1.) Circular reference: fragmentOne > fragmentTwo > fragmentThree > fragmentOne
+
+      Error on fragmentTwo
+      1.) Circular reference: fragmentTwo > fragmentThree > fragmentOne > fragmentTwo
+
+      Error on fragmentThree
+      1.) Circular reference: fragmentThree > fragmentOne > fragmentTwo > fragmentThree
+    ERRORS
   end
 end

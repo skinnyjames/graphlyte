@@ -3,6 +3,8 @@
 module Graphlyte
   module Editors
     module Validators
+      # Fragment Validator
+      # annotates Syntax::Fragment objects with errors
       class Fragment
         attr_reader :schema, :fragment, :fragments, :spreads
 
@@ -14,11 +16,13 @@ module Graphlyte
         end
 
         def annotate
-          fragment.subject.errors << "ambiguous name #{fragment.subject.name}" if duplicates.include?(fragment.subject.name)
+          if duplicates.include?(fragment.subject.name)
+            fragment.subject.errors << "ambiguous name #{fragment.subject.name}"
+          end
 
           circular, path = *circular_references
           fragment.subject.errors << "Circular reference: #{path.join(' > ')}" if circular
-          fragment.subject.errors << "fragment must be used" if unused?
+          fragment.subject.errors << 'fragment must be used' if unused?
         end
 
         def duplicates

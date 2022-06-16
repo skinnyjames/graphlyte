@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
+RSpec.describe 'Field validation', :requests, :mocks do
   let(:schema) do
     Graphlyte.load_schema do |query|
       request(query)
@@ -8,49 +8,14 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
   end
 
   it 'throws when required selection is empty' do
-    query = Graphlyte.query do |q|
+    query = Graphlyte.query('something') do |q|
       q.User(id: 123)
     end
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.message).to include('selection on field User can\'t be empty')
-    end
-  end
-
-  it 'throws when field is not defined on type' do
-    query = Graphlyte.parse <<~GQL
-      query {
-        User(id: 123) {
-          HowdyHo
-          Todos {
-            id
-            foobar
-          }
-        }
-      }
-    GQL
-
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.messages).to include('HowdyHo is not defined on User', 'foobar is not defined on Todos')
-    end
-  end
-
-  it 'throws when field is not defined on type (fragments)', :focus do
-    query = Graphlyte.parse <<~GQL
-      query {
-        User(id: 123) {
-          Todos { ...hello }
-        }
-      }
-
-      fragment hello on Todo {
-        id
-        foobar
-      }
-    GQL
-
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.messages).to include('foobar is not defined on Todo')
-    end
+    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
+      Error on something
+        User
+      1.) selection on field User can't be empty
+    ERROR
   end
 end

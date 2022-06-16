@@ -28,8 +28,7 @@ module Graphlyte
         end
 
         ### fragment behavior validation
-        def fragment_collector
-        end
+        def fragment_collector; end
       end
     end
   end

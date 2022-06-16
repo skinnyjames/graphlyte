@@ -3,6 +3,7 @@
 module Graphlyte
   module Editors
     module Validators
+      # annotates Syntax::Operation with errors
       class Operation
         attr_reader :schema, :op
 

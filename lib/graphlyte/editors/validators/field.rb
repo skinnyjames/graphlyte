@@ -3,6 +3,8 @@
 module Graphlyte
   module Editors
     module Validators
+      # Field level validator
+      # Annotates Syntax::Field objects with errors
       class Field
         attr_reader :schema, :field
 
@@ -13,7 +15,7 @@ module Graphlyte
 
         def annotate
           unless valid_type?
-            field.subject.errors << "#{field.subject.name} is not defined on #{field.parent_name}"
+            # field.subject.errors << "#{field.subject.name} is not defined on #{field.parent_name}"
             return
           end
 

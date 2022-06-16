@@ -3,6 +3,7 @@
 module Graphlyte
   module Editors
     module Validators
+      # annotates Syntax::InlineFragment with errors
       class InlineFragment
         attr_reader :schema, :inline
 
@@ -14,7 +15,9 @@ module Graphlyte
         def annotate
           type = inline.subject.type_name
           inline.subject.errors << "inline target #{type} not found" unless schema.types[type]
-          inline.subject.errors << "inline target #{type} must be kind of UNION, INTERFACE, or OBJECT" unless valid_fragment_type?(type)
+          return if valid_fragment_type?(type)
+
+          inline.subject.errors << "inline target #{type} must be kind of UNION, INTERFACE, or OBJECT"
         end
 
         def valid_fragment_type?(type_name)

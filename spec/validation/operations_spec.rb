@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
+RSpec.describe 'Operation validation', :requests, :mocks do
   let(:schema) do
     Graphlyte.load_schema do |query|
       request(query)
@@ -22,9 +22,13 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.messages).to include('ambiguous operation name operationOne')
-    end
+    query.validate(schema)
+
+    expect(query.validation_errors).to eql((<<~ERRORS * 2).chomp)
+      Error on operationOne
+      1.) ambiguous operation name operationOne
+
+    ERRORS
   end
 
   it 'throws on mixing named and anonymous operations' do
@@ -38,8 +42,11 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.messages).to include('cannot mix anonymous and named operations')
-    end
+    query.validate(schema)
+
+    expect(query.validation_errors).to eql(<<~ERRORS)
+      Error on document
+      1.) cannot mix anonymous and named operations
+    ERRORS
   end
 end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
+RSpec.describe 'Argument validation', :requests, :mocks do
   let(:schema) do
     Graphlyte.load_schema do |query|
       request(query)
@@ -8,36 +8,44 @@ RSpec.describe Graphlyte::Editors::Validation, :requests, :mocks do
   end
 
   it 'throws when required arguments are null' do
-    query = Graphlyte.query do |q|
+    query = Graphlyte.query('something') do |q|
       q.User(id: nil, &:id).alias('sean')
     end
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.message).to include('argument id on field User is required')
-    end
+    query.validate(schema)
+    expect(query.validation_errors).to eql(<<~ERRORS)
+      Error on something
+        User
+      1.) argument id on field User is required
+    ERRORS
   end
 
   it 'throws when required arguments are missing' do
-    query = Graphlyte.query do |q|
+    query = Graphlyte.query('something') do |q|
       q.User(&:id).alias('sean')
     end
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.message).to include('argument id on field User is required')
-    end
+    query.validate(schema)
+    expect(query.validation_errors).to eql(<<~ERRORS)
+      Error on something
+        User
+      1.) argument id on field User is required
+    ERRORS
   end
 
   it 'throws with duplicate argument names' do
     query = Graphlyte.parse <<~GQL
-      query {
+      query query {
         User(id: 123, id: 453) {
           id
         }
       }
     GQL
 
-    expect { query.validate(schema) }.to raise_error do |err|
-      expect(err.message).to include('ambiguous argument id on field User')
-    end
+    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
+      Error on query
+        User
+      1.) has ambiguous args: id
+    ERRORS
   end
 end

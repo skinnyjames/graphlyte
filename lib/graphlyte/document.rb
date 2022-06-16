@@ -131,7 +131,8 @@ module Graphlyte
     end
 
     def validation_errors
-      Editors::CollectErrors.new.edit(self).errors.join
+      errors = Editors::CollectErrors.new.edit(self).errors
+      errors.empty? ? nil : errors.join("\n")
     end
 
     def variable_references
