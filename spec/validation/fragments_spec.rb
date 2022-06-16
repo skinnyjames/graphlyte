@@ -38,14 +38,12 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       }
 
       fragment fragmentOne on Foobar {
-        id
         ...fragmentTwo
       }
 
       fragment fragmentTwo on Todo {
-        ... on Foobar {
-          fun
-        }
+        id
+        ... on Foobar { id }
       }
     GQL
 
@@ -59,6 +57,11 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
         Foobar
       1.) inline target Foobar not found
       2.) inline target Foobar must be kind of UNION, INTERFACE, or OBJECT
+
+      Error on fragmentTwo
+        Foobar
+          id
+      1.) field id is not defined on Foobar
     ERRORS
   end
 
@@ -77,6 +80,10 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       Error on query
         fragmentOne
       1.) target String must be kind of UNION, INTERFACE, or OBJECT
+
+      Error on fragmentOne
+        id
+      1.) field id is not defined on String
     ERRORS
   end
 

@@ -15,7 +15,7 @@ module Graphlyte
 
         def annotate
           unless valid_type?
-            # field.subject.errors << "#{field.subject.name} is not defined on #{field.parent_name}"
+            field.subject.errors << "field #{field.subject.name} is not defined on #{field.parent_name}"
             return
           end
 
@@ -30,7 +30,7 @@ module Graphlyte
         end
 
         def validate_required_arguments
-          definition.arguments.each do |name, input_value|
+          definition.respond_to?(:arguments) && definition.arguments.each do |name, input_value|
             arg_or_nil = field.subject.arguments.find { |arg| arg.name == name }
 
             field.subject.errors << "argument #{name} on field #{field.subject.name} is required" unless required_arg?(
@@ -40,9 +40,9 @@ module Graphlyte
         end
 
         def validate_selection
-          if subselection_must_be_empty?(definition) && !field.subject.selection.empty?
+          if subselection_must_be_empty? && !field.subject.selection.empty?
             field.subject.errors << "selection on field #{field.subject.name} must be empty"
-          elsif subselection_must_not_be_empty?(definition) && field.subject.selection.empty?
+          elsif subselection_must_not_be_empty? && field.subject.selection.empty?
             field.subject.errors << "selection on field #{field.subject.name} can't be empty"
           end
         end
@@ -55,6 +55,10 @@ module Graphlyte
           field.definition(schema)
         end
 
+        def type_definition
+          field.type_definition(schema)
+        end
+
         def required_arg?(input_value, arg_or_nil)
           if input_value.type.kind == :NON_NULL && input_value.default_value.nil?
             !arg_or_nil.nil? && arg_or_nil.value.type != :NULL
@@ -63,12 +67,12 @@ module Graphlyte
           end
         end
 
-        def subselection_must_be_empty?(defn)
-          %i[SCALAR ENUM].include?(defn.type.kind)
+        def subselection_must_be_empty?
+          %i[SCALAR ENUM].include?(type_definition.kind)
         end
 
-        def subselection_must_not_be_empty?(defn)
-          %i[INTERFACE UNION OBJECT].include?(defn.type.kind)
+        def subselection_must_not_be_empty?
+          %i[INTERFACE UNION OBJECT].include?(type_definition.kind)
         end
       end
     end

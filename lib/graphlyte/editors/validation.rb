@@ -13,25 +13,32 @@ module Graphlyte
     module ContextHelpers
       using Refinements::StringRefinement
 
-      # given a syntax path, it will return an associated schema object
-      # todo: this doesn't work right now
+      def type_definition(schema)
+        defn = definition(schema)
+        defn.instance_of?(Schema::Field) ? defn.type : defn
+      end
+
+      # Returns some kind of def for a given Syntax object
+      # @return [Schema::Field | Schema::Type] result
       def definition(schema, path: context.path.dup, result: nil)
-        return result if path.empty?
+        if path.empty?
+          return result
+        end
 
-        schema_path = path.shift
-
-        result = case schema_path
-                 when Syntax::Operation
-                   schema.types[schema_path.type.camelize_upper]
-                 when Syntax::Field
-                   resolve_field_schema(result, schema_path, schema: schema, rest: path.size)
-                 when Syntax::Argument
-                   result.arguments[schema_path.name]
-                 end
-
+        syntax = path.shift
+        result = case syntax
+                     when Syntax::Operation
+                       schema.types[syntax.type.camelize_upper]
+                     when Syntax::Fragment
+                       schema.types[syntax.type_name]
+                     when Syntax::Field
+                       resolve_field_schema(result, syntax, schema: schema)
+                     when Syntax::Argument
+                       result.arguments[syntax.name]
+                     end
         return nil unless result
 
-        definition(schema, path: path, result: result)
+        definition(schema, path: path || [], result: result)
       end
 
       def parent_name
@@ -43,16 +50,14 @@ module Graphlyte
         end
       end
 
-      def resolve_field_schema(result, field, schema:, rest:) # rubocop:disable Metrics/AbcSize
-        if result.is_a?(Schema::Field)
-          schema_field = schema.types[result.name]&.fields&.dig(field.name) if result.type.kind == :OBJECT
+      def resolve_field_schema(result, syntax, schema:) # rubocop:disable Metrics/AbcSize
+        if result.instance_of?(Schema::Field)
+          field_def = schema.types[result.type.unpack]&.fields&.dig(syntax.name)
 
-          return nil if schema_field.nil?
-
-          return schema_field.type.kind == :LIST && !rest.zero? ? schema.types[schema_field.type.unpack] : schema_field
+          return field_def
         end
 
-        result.fields[field.name]
+        result.fields[syntax.name]
       end
     end
 
