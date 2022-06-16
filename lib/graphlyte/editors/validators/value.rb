@@ -26,9 +26,10 @@ module Graphlyte
 
         def validate_type
           defn = value.type_definition(schema)
+          return value.subject.errors << "value #{value.subject.value} is invalid - no type" unless defn
 
-          valid = TYPE_MAP[defn.name]&.call(value.subject) || DEFAULT[defn.name, value.subject]
-          value.subject.errors << "value #{value.subject.value} must be of #{defn.name} - got #{value.subject.type}" unless valid
+          valid = TYPE_MAP[defn.unpack]&.call(value.subject) || DEFAULT[defn.unpack, value.subject]
+          value.subject.errors << "value #{value.subject.value} must be of #{defn.unpack} - got #{value.subject.type}" unless valid
         end
       end
     end

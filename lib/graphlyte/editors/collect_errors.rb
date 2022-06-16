@@ -33,7 +33,9 @@ module Graphlyte
       def handle_errors(syntax, context)
         return unless syntax.errors.any?
 
-        path = context.path.map do |obj|
+        paths = context.path.reject { |path| path.instance_of?(Syntax::InputObject) }
+
+        path = paths.map do |obj|
           case obj
           when Syntax::Value
             obj.value

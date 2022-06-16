@@ -123,6 +123,7 @@ module Graphlyte
 
       arg.name = name
       expect(:PUNCTUATOR, ':')
+      # check type of value first
       arg.value = parse_value
 
       arg
@@ -142,7 +143,7 @@ module Graphlyte
           Graphlyte::Syntax::VariableReference.new(name)
         when '{'
           @index -= 1
-          parse_object_value
+          Graphlyte::Syntax::InputObject.new(parse_object_value)
         when '['
           @index -= 1
           parse_array_value

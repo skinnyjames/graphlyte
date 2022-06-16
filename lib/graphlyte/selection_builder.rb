@@ -27,6 +27,7 @@ module Graphlyte
                   Syntax::Value.from_ruby(v)
                 end
 
+        value = Syntax::InputObject.new(value) if value.instance_of?(Hash)
         Syntax::Argument.new(k.to_s.camelize, value)
       end
     end

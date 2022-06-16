@@ -15,7 +15,7 @@ module Graphlyte
 
       def type_definition(schema)
         defn = definition(schema)
-        defn.instance_of?(Schema::Field) ? defn.type : defn
+        defn.instance_of?(Schema::Type) ? defn : defn&.type
       end
 
       # Returns some kind of def for a given Syntax object
@@ -34,12 +34,16 @@ module Graphlyte
                  when Syntax::Argument
                    # todo: handle complex input objects
                    result.arguments[syntax.name]
+                 when Syntax::InputObject
+                   schema.types[result.type.unpack]
+                 when Syntax::InputObjectArgument
+                   result.input_fields[syntax.name]
                  when Syntax::Value
                    if result.instance_of?(Schema::InputValue)
-                     defn = schema.types[result.type.unpack]
                      result
+                   else
+                    schema.types[result.type.unpack]
                    end
-                   schema.types[result.type.unpack]
                  end
         return nil unless result
 

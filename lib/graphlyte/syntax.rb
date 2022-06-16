@@ -39,6 +39,34 @@ module Graphlyte
       end
     end
 
+    class InputObjectArgument < Graphlyte::Data
+      attr_accessor :name, :value
+
+      def initialize(name = nil, value = nil, **kwargs)
+        super(**kwargs)
+        @name = name if name
+        @value = value if value
+      end
+    end
+
+    class InputObject < Graphlyte::Data
+      attr_accessor :values
+
+      def initialize(hash = {}, **opts)
+        super(**opts)
+        @values = expand(hash)
+      end
+
+      def expand(hash)
+        hash.map do |k, v|
+          arg = InputObjectArgument.new
+          arg.name = k
+          arg.value = v.instance_of?(Hash) ? InputObject.new(v) : v
+          arg
+        end
+      end
+    end
+
     # An argument to a Field
     # See: https://spec.graphql.org/October2021/#sec-Language.Arguments
     class Argument < Graphlyte::Data

@@ -20,6 +20,19 @@ module Graphlyte
         end
       end
 
+      refine Syntax::InputObject do
+        def serialize(buff)
+          buff << '{'
+          values.each_with_index do |obj, i|
+            buff << (', ' * [i, 1].min)
+            buff << obj.name
+            buff << ': '
+            obj.value.serialize(buff)
+          end
+          buff << '}'
+        end
+      end
+
       refine Syntax::VariableDefinition do
         def serialize(buff)
           buff << "$#{variable}: #{type}"

@@ -28,14 +28,17 @@ RSpec.describe 'Value validation', :requests, :mocks do
   it 'validates complex value type', :focus do
     query = Graphlyte.parse <<~GQL
       query something {
-        allTodos(filter: { id: 123 }) { id }
+        allTodos(filter: { id: todo }) { id }
       }
     GQL
 
     expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
       Error on something
-        allTodos(filter: { id: 123 }) { id }
-
+        allTodos
+          filter
+            id
+              todo
+      1.) value todo must be of ID - got ENUM
     ERROR
   end
 
