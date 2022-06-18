@@ -76,8 +76,14 @@ RSpec.describe 'Value validation', :requests, :mocks do
       Error on something
         allTodos
           filter
-            foo
       1.) Input object field foo does not exist on TodoFilter
+
+      Error on something
+        allTodos
+          filter
+            foo
+              bar
+      1.) value bar is invalid - no type
     ERROR
   end
 
