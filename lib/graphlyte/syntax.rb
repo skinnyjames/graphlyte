@@ -39,6 +39,8 @@ module Graphlyte
       end
     end
 
+    # Abstraction to represent input Object arguments
+    # No spec
     class InputObjectArgument < Graphlyte::Data
       attr_accessor :name, :value
 
@@ -49,6 +51,8 @@ module Graphlyte
       end
     end
 
+    # An input object for an argument
+    # See: https://spec.graphql.org/October2021/#sec-Input-Object-Values
     class InputObject < Graphlyte::Data
       attr_accessor :values
 

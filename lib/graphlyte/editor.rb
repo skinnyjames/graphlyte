@@ -184,7 +184,7 @@ module Graphlyte
         case object
         when Array
           [object.flat_map { edit_value(_1) }]
-        # todo: should be unused
+        # TODO: should be unused
         when Hash
           [
             object.values.flat_map do |(k, old_value)|

@@ -9,7 +9,7 @@ RSpec.describe 'Value validation', :requests, :mocks do
 
   it 'validates simple value type' do
     query = Graphlyte.parse <<~GQL
-      query something { 
+      query something {
         User(id: enum) {
           id
         }
@@ -25,7 +25,7 @@ RSpec.describe 'Value validation', :requests, :mocks do
     ERROR
   end
 
-  it 'validates complex value type', :focus do
+  it 'validates complex value type' do
     query = Graphlyte.parse <<~GQL
       query something {
         allTodos(filter: { id: todo }) { id }
@@ -46,5 +46,22 @@ RSpec.describe 'Value validation', :requests, :mocks do
     query = Graphlyte.schema_query
 
     expect(query.validate(schema).validation_errors).to be(nil)
+  end
+
+  it 'validates array value', :focus do
+    query = Graphlyte.parse <<~GQL
+      query something {
+        allTodos(filter: { ids: [123, null] }) { id }
+      }
+    GQL
+
+    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
+      Error on something
+        allTodos
+          filter
+            ids
+              null
+      1.) value null must be of ID - got NULL
+    ERROR
   end
 end

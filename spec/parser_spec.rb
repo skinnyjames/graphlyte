@@ -171,10 +171,10 @@ describe Graphlyte::Parser do
           ]
         ],
         Graphlyte::Syntax::InputObject.new({
-          'a' => int('0'),
-          'b' => int('1'),
-          'c' => int('2')
-        })
+                                             'a' => int('0'),
+                                             'b' => int('1'),
+                                             'c' => int('2')
+                                           })
       ]
     end
   end
@@ -240,13 +240,13 @@ describe Graphlyte::Parser do
             arguments: [
               Graphlyte::Syntax::Argument.new('a', string('foo')),
               Graphlyte::Syntax::Argument.new('input', Graphlyte::Syntax::InputObject.new({
-                                                'x' => int('1'),
-                                                'y' => enum(:FOO),
-                                                'z' => {
-                                                  'foo' => true_value,
-                                                  'bar' => null_value
-                                                }
-                                              }))
+                                                                                            'x' => int('1'),
+                                                                                            'y' => enum(:FOO),
+                                                                                            'z' => {
+                                                                                              'foo' => true_value,
+                                                                                              'bar' => null_value
+                                                                                            }
+                                                                                          }))
             ],
             directives: [],
             selection: [

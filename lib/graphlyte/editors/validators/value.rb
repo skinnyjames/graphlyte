@@ -3,6 +3,7 @@
 module Graphlyte
   module Editors
     module Validators
+      # Validation rules for values
       class Value
         attr_reader :schema, :value
 
@@ -11,9 +12,9 @@ module Graphlyte
           'Int' => ->(v) { v.integer? },
           'String' => ->(v) { v.type == :STRING },
           'Boolean' => ->(v) { v.type == :BOOL }
-        }
+        }.freeze
 
-        DEFAULT = ->(type, v) { v.type === type.to_sym }
+        DEFAULT = ->(type, v) { v.type == type.to_sym }
 
         def initialize(schema, value_with_context)
           @schema = schema
@@ -29,7 +30,9 @@ module Graphlyte
           return value.subject.errors << "value #{value.subject.value} is invalid - no type" unless defn
 
           valid = TYPE_MAP[defn.unpack]&.call(value.subject) || DEFAULT[defn.unpack, value.subject]
-          value.subject.errors << "value #{value.subject.value} must be of #{defn.unpack} - got #{value.subject.type}" unless valid
+          return if valid
+
+          value.subject.errors << "value #{value.subject.value} must be of #{defn.unpack} - got #{value.subject.type}"
         end
       end
     end

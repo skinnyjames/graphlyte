@@ -58,19 +58,21 @@ RSpec.describe 'Field validation', :requests, :mocks do
       query something {
         User(id: 123) {
           Todos {
-            id
-            foobar
+            ...fragmentOne
           }
         }
+      }
+
+      fragment fragmentOne on Todo {
+        id
+        foobar
       }
     GQL
 
     expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        User
-          Todos
-            foobar
-      1.) field foobar is not defined on Todos
+      Error on fragmentOne
+        foobar
+      1.) field foobar is not defined on Todo
     ERROR
   end
 end

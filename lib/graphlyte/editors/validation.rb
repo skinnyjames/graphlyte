@@ -20,6 +20,8 @@ module Graphlyte
 
       # Returns some kind of def for a given Syntax object
       # @return [Schema::Field | Schema::Type] result
+      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable Metrics/CyclomaticComplexity
       def definition(schema, path: context.path.dup, result: nil)
         return result if path.empty?
 
@@ -32,7 +34,7 @@ module Graphlyte
                  when Syntax::Field
                    resolve_field_schema(result, syntax, schema: schema)
                  when Syntax::Argument
-                   # todo: handle complex input objects
+                   # TODO: handle complex input objects
                    result.arguments[syntax.name]
                  when Syntax::InputObject
                    schema.types[result.type.unpack]
@@ -42,13 +44,15 @@ module Graphlyte
                    if result.instance_of?(Schema::InputValue)
                      result
                    else
-                    schema.types[result.type.unpack]
+                     schema.types[result.type.unpack]
                    end
                  end
         return nil unless result
 
         definition(schema, path: path || [], result: result)
       end
+      # rubocop:enable Metrics/AbcSize
+      # rubocop:enable Metrics/CyclomaticComplexity
 
       def parent_name
         case context.parent
