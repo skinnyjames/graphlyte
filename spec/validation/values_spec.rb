@@ -48,7 +48,7 @@ RSpec.describe 'Value validation', :requests, :mocks do
     expect(query.validate(schema).validation_errors).to be(nil)
   end
 
-  it 'validates array value', :focus do
+  it 'validates array value' do
     query = Graphlyte.parse <<~GQL
       query something {
         allTodos(filter: { ids: [123, null] }) { id }
@@ -64,4 +64,54 @@ RSpec.describe 'Value validation', :requests, :mocks do
       1.) value null must be of ID - got NULL
     ERROR
   end
+
+  it 'validates an input object field names' do
+    query = Graphlyte.parse <<~GQL
+      query something {
+        allTodos(filter: { foo: bar }) { id }
+      }
+    GQL
+
+    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
+      Error on something
+        allTodos
+          filter
+            foo
+      1.) Input object field foo does not exist on TodoFilter
+    ERROR
+  end
+
+  it 'validates required input object names', :focus do
+    query = Graphlyte.parse <<~GQL
+      mutation something {
+        createManyUser(data: { })
+      }
+    GQL
+
+    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
+      Error on something
+        createManyUser
+          data
+      1.) argument id is required
+      2.) argument name is required
+    ERROR
+  end
+
+  # todo: the following is not possible - last duplicate wins currently
+  it 'validates duplicate input object field names', :focus do
+    query = Graphlyte.query do |q|
+      q.allTodos(filter: { id: 123, id: 456 }, &:id)
+    end
+
+    # todo: uncomment
+    # expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
+    #   Error on something
+    #     allTodos
+    #       filter
+    #   1.) duplicate argument id
+    # ERROR
+
+    expect(query.validate(schema).validation_errors).to be(nil)
+  end
+
 end

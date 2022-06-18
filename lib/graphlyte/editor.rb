@@ -162,6 +162,7 @@ module Graphlyte
         end
       end
 
+      # todo: reduce duplication of logic with #edit_arguments
       def edit_input_object(object)
         return unless object.respond_to?(:values)
 

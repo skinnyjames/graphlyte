@@ -27,6 +27,7 @@ module Graphlyte
           .on_fragment_spread(&method(:handle_errors))
           .on_field(&method(:handle_errors))
           .on_argument(&method(:handle_errors))
+          .on_input_object(&method(:handle_errors))
           .on_value(&method(:handle_errors))
       end
 

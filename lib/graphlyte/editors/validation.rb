@@ -6,6 +6,7 @@ require_relative './validators/document'
 require_relative './validators/field'
 require_relative './validators/fragment_spread'
 require_relative './validators/inline_fragment'
+require_relative './validators/input_object'
 
 module Graphlyte
   module Editors
@@ -135,6 +136,7 @@ module Graphlyte
           .on_fragment(&method(:validate_fragment))
           .on_fragment_spread(&method(:validate_fragment_spread))
           .on_field(&method(:validate_field))
+          .on_input_object(&method(:validate_input_object))
           .on_argument(&method(:validate_argument))
           .on_value(&method(:validate_value))
           .on_variable(&method(:validate_variable))
@@ -176,6 +178,10 @@ module Graphlyte
 
       def validate_value(val, action, with_context: WithContext.new(val, action))
         Validators::Value.new(schema, with_context).annotate
+      end
+
+      def validate_input_object(input_obj, action, with_context: WithContext.new(input_obj, action))
+        Validators::InputObject.new(schema, with_context).annotate
       end
 
       def validate_variable(var, action); end
