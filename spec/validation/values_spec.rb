@@ -87,7 +87,7 @@ RSpec.describe 'Value validation', :requests, :mocks do
     ERROR
   end
 
-  it 'validates required input object names', :focus do
+  it 'validates required input object names' do
     query = Graphlyte.parse <<~GQL
       mutation something {
         createManyUser(data: { })
@@ -104,7 +104,7 @@ RSpec.describe 'Value validation', :requests, :mocks do
   end
 
   # todo: the following is not possible - last duplicate wins currently
-  it 'validates duplicate input object field names', :focus do
+  it 'validates duplicate input object field names' do
     query = Graphlyte.query do |q|
       q.allTodos(filter: { id: 123, id: 456 }, &:id)
     end

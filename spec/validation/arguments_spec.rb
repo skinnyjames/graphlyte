@@ -54,4 +54,19 @@ RSpec.describe 'Argument validation', :requests, :mocks do
       1.) has ambiguous args: id
     ERRORS
   end
+
+  it 'ensures argument name definitions', :focus do
+    query = Graphlyte.parse <<~GQL
+      query query { 
+        allTodos(foo: {}) { id }
+      }
+    GQL
+
+    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
+      Error on query
+        allTodos
+          foo
+      1.) Argument foo not defined on allTodos
+    ERRORS
+  end
 end

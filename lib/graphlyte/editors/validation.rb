@@ -7,6 +7,7 @@ require_relative './validators/field'
 require_relative './validators/fragment_spread'
 require_relative './validators/inline_fragment'
 require_relative './validators/input_object'
+require_relative './validators/argument'
 
 module Graphlyte
   module Editors
@@ -174,7 +175,9 @@ module Graphlyte
         Validators::Field.new(schema, WithContext.new(field, action)).annotate
       end
 
-      def validate_argument(arg, action, with_context: WithContext.new(arg, action)); end
+      def validate_argument(arg, action, with_context: WithContext.new(arg, action))
+        Validators::Argument.new(schema, with_context).annotate
+      end
 
       def validate_value(val, action, with_context: WithContext.new(val, action))
         Validators::Value.new(schema, with_context).annotate
