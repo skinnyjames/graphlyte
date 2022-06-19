@@ -16,13 +16,8 @@ RSpec.describe 'Value validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        User
-          id
-            enum
-      1.) value enum must be of ID - got ENUM
-    ERROR
+    errors = [{ message: 'value enum must be of ID - got ENUM', path: %w[something User id enum] }]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'validates complex value type' do
@@ -32,20 +27,14 @@ RSpec.describe 'Value validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        allTodos
-          filter
-            id
-              todo
-      1.) value todo must be of ID - got ENUM
-    ERROR
+    errors = [{ message: 'value todo must be of ID - got ENUM', path: %w[something allTodos filter id todo] }]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'validates a schema query' do
     query = Graphlyte.schema_query
 
-    expect(query.validate(schema).validation_errors).to be(nil)
+    expect(query).to produce_errors(schema, [])
   end
 
   it 'validates array value' do
@@ -55,14 +44,8 @@ RSpec.describe 'Value validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        allTodos
-          filter
-            ids
-              null
-      1.) value null must be of ID - got NULL
-    ERROR
+    errors = [{ message: 'value null must be of ID - got NULL', path: %w[something allTodos filter ids null] }]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'validates an input object field names' do
@@ -72,19 +55,11 @@ RSpec.describe 'Value validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        allTodos
-          filter
-      1.) Input object field foo does not exist on TodoFilter
-
-      Error on something
-        allTodos
-          filter
-            foo
-              bar
-      1.) value bar is invalid - no type
-    ERROR
+    errors = [
+      { message: 'Input object field foo does not exist on TodoFilter', path: %w[something allTodos filter] },
+      { message: 'value bar is invalid - no type', path: %w[something allTodos filter foo bar] }
+    ]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'validates required input object names' do
@@ -94,13 +69,11 @@ RSpec.describe 'Value validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        createManyUser
-          data
-      1.) argument id is required
-      2.) argument name is required
-    ERROR
+    errors = [
+      { message: 'argument id is required', path: %w[something createManyUser data] },
+      { message: 'argument name is required', path: %w[something createManyUser data] }
+    ]
+    expect(query).to produce_errors(schema, errors)
   end
 
   # todo: the following is not possible - last duplicate wins currently
@@ -109,15 +82,6 @@ RSpec.describe 'Value validation', :requests, :mocks do
       q.allTodos(filter: { id: 123, id: 456 }, &:id)
     end
 
-    # todo: uncomment
-    # expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-    #   Error on something
-    #     allTodos
-    #       filter
-    #   1.) duplicate argument id
-    # ERROR
-
-    expect(query.validate(schema).validation_errors).to be(nil)
+    expect(query).to produce_errors(schema, [])
   end
-
 end

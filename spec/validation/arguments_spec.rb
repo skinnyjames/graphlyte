@@ -12,18 +12,12 @@ RSpec.describe 'Argument validation', :requests, :mocks do
       q.User(id: nil, &:id).alias('sean')
     end
 
-    query.validate(schema)
-    expect(query.validation_errors).to eql(<<~ERRORS)
-      Error on something
-        User
-      1.) argument id on field User is required
+    errors = [
+      { message: 'argument id on field User is required', path: %w[something User] },
+      { message: 'value null must be of ID - got NULL', path: %w[something User id null] }
+    ]
 
-      Error on something
-        User
-          id
-            null
-      1.) value null must be of ID - got NULL
-    ERRORS
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'throws when required arguments are missing' do
@@ -31,12 +25,9 @@ RSpec.describe 'Argument validation', :requests, :mocks do
       q.User(&:id).alias('sean')
     end
 
-    query.validate(schema)
-    expect(query.validation_errors).to eql(<<~ERRORS)
-      Error on something
-        User
-      1.) argument id on field User is required
-    ERRORS
+    errors = [{ message: 'argument id on field User is required', path: %w[something User] }]
+
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'throws with duplicate argument names' do
@@ -48,11 +39,8 @@ RSpec.describe 'Argument validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
-      Error on query
-        User
-      1.) has ambiguous args: id
-    ERRORS
+    errors = [{ message: 'has ambiguous args: id', path: %w[query User] }]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'ensures argument name definitions' do
@@ -62,11 +50,7 @@ RSpec.describe 'Argument validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
-      Error on query
-        allTodos
-          foo
-      1.) Argument foo not defined on allTodos
-    ERRORS
+    errors = [{ message: 'Argument foo not defined on allTodos', path: %w[query allTodos foo] }]
+    expect(query).to produce_errors(schema, errors)
   end
 end

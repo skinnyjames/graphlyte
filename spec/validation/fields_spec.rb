@@ -12,11 +12,8 @@ RSpec.describe 'Field validation', :requests, :mocks do
       q.User(id: 123)
     end
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        User
-      1.) selection on field User can't be empty
-    ERROR
+    errors = [{ message: 'selection on field User can\'t be empty', path: %w[something User]}]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'annotates invalid types on fields' do
@@ -28,12 +25,8 @@ RSpec.describe 'Field validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on something
-        User
-          foobar
-      1.) field foobar is not defined on User
-    ERROR
+    errors = [{ message: 'field foobar is not defined on User', path: %w[something User foobar]}]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'no errors for correct fields on lists' do
@@ -50,7 +43,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to be(nil)
+    expect(query).to produce_errors(schema, [])
   end
 
   it 'annotates invalid types on fragments' do
@@ -69,10 +62,7 @@ RSpec.describe 'Field validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERROR)
-      Error on fragmentOne
-        foobar
-      1.) field foobar is not defined on Todo
-    ERROR
+    errors = [{ message: 'field foobar is not defined on Todo', path: %w[fragmentOne foobar] }]
+    expect(query).to produce_errors(schema, errors)
   end
 end
