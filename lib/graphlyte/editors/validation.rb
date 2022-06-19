@@ -11,90 +11,6 @@ require_relative './validators/argument'
 
 module Graphlyte
   module Editors
-    module SchemaHelpers
-      using Refinements::StringRefinement
-
-      class << self
-        def type_definition(schema, path:)
-          defn = definition(schema, path: path)
-          type(defn)
-        end
-
-        def type(defn)
-          defn.instance_of?(Schema::Type) ? defn : defn&.type
-        end
-
-        # Returns some kind of def for a given Syntax object
-        # @return [Schema::Field | Schema::Type] result
-        # rubocop:disable Metrics/AbcSize
-        # rubocop:disable Metrics/CyclomaticComplexity
-        def definition(schema, path: [], result: nil)
-          return result if path.empty?
-
-          syntax = path.shift
-          result = case syntax
-                   when Syntax::Operation
-                     schema.types[syntax.type.camelize_upper]
-                   when Syntax::Fragment
-                     resolve_fragment_schema(result, syntax, schema: schema)
-                   when Syntax::InlineFragment
-                     if result.name == syntax.type_name
-                       result
-                     else
-                       result.fields[syntax.type_name]
-                     end
-                   when Syntax::FragmentSpread
-                     result.fields[syntax.type.unpack]
-                   when Syntax::Field
-                     resolve_field_schema(result, syntax, schema: schema)
-                   when Syntax::Argument
-                     # TODO: handle complex input objects
-                     result.arguments[syntax.name]
-                   when Syntax::InputObject
-                     schema.types[result.type.unpack]
-                   when Syntax::InputObjectArgument
-                     result.input_fields[syntax.name]
-                   when Syntax::Value
-                     if result.instance_of?(Schema::InputValue)
-                       result
-                     else
-                       schema.types[result.type.unpack]
-                     end
-                   end
-          return nil unless result
-
-          definition(schema, path: path || [], result: result)
-        end
-
-        def resolve_fragment_schema(result, syntax, schema:)
-          # for a fragment that is spread on a model
-          return result if result&.name == syntax.type_name
-
-          # for a fragment spread on a field
-          if result.instance_of?(Schema::Field)
-            field_def = schema.types[result.type.unpack]
-
-            return field_def
-          end
-
-
-          result ? result.fields[syntax.type_name] : schema.types[syntax.type_name]
-        end
-
-        def resolve_field_schema(result, syntax, schema:)
-          return schema.types['__Schema'] if syntax.name == '__schema' && result.name == 'Query'
-
-          if result.instance_of?(Schema::Field)
-            field_def = schema.types[result.type.unpack]&.fields&.dig(syntax.name)
-
-            return field_def
-          end
-
-          result.fields[syntax.name]
-        end
-      end
-    end
-
     WithContext = Struct.new(:subject, :context) do
       using Refinements::StringRefinement
 
@@ -108,11 +24,11 @@ module Graphlyte
       end
 
       def type_definition(schema)
-        SchemaHelpers.type_definition(schema, path: context.path.dup)
+        schema.type_definition(context.path.dup)
       end
 
       def definition(schema)
-        SchemaHelpers.definition(schema, path: context.path.dup)
+        schema.definition(context.path.dup)
       end
     end
 

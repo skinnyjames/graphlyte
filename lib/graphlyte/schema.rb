@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require_relative './data'
-
+require_relative './refinements/string_refinement'
 module Graphlyte
   # Represents a schema definition, containing all type definitions available in a server
   # Reflects the response to a [schema query](./schema_query.rb)
   class Schema < Graphlyte::Data
+    using Refinements::StringRefinement
+
     # A directive adds metadata to a defintion.
     # See: https://spec.graphql.org/October2021/#sec-Language.Directives
     class Directive < Graphlyte::Data
@@ -156,6 +158,81 @@ module Graphlyte
       return unless resp
 
       resp.to_h { |entry| [entry['name'], entity.from_schema_response(entry)] }
+    end
+
+    def type_definition(path)
+      type(definition(path))
+    end
+
+    def type(defn)
+      defn.instance_of?(Schema::Type) ? defn : defn&.type
+    end
+
+    def definition(path = [], result: nil)
+      return result if path.empty?
+
+      syntax = path.shift
+      result = case syntax
+               when Syntax::Operation
+                 types[syntax.type.camelize_upper]
+               when Syntax::Fragment
+                 resolve_fragment_schema(result, syntax)
+               when Syntax::InlineFragment
+                 if result.name == syntax.type_name
+                   result
+                 else
+                   result.fields[syntax.type_name]
+                 end
+               when Syntax::FragmentSpread
+                 result.fields[syntax.type.unpack]
+               when Syntax::Field
+                 resolve_field_schema(result, syntax)
+               when Syntax::Argument
+                 # TODO: handle complex input objects
+                 result.arguments[syntax.name]
+               when Syntax::InputObject
+                 types[result.type.unpack]
+               when Syntax::InputObjectArgument
+                 result.input_fields[syntax.name]
+               when Syntax::Value
+                 if result.instance_of?(Schema::InputValue)
+                   result
+                 else
+                   types[result.type.unpack]
+                 end
+               end
+      return nil unless result
+
+      definition(path, result: result)
+    end
+
+    private
+
+    def resolve_fragment_schema(result, syntax)
+      # for a fragment that is spread on a model
+      return result if result&.name == syntax.type_name
+
+      # for a fragment spread on a field
+      if result.instance_of?(Schema::Field)
+        field_def = types[result.type.unpack]
+
+        return field_def
+      end
+
+
+      result ? result.fields[syntax.type_name] : types[syntax.type_name]
+    end
+
+    def resolve_field_schema(result, syntax)
+      return types['__Schema'] if syntax.name == '__schema' && result.name == 'Query'
+
+      if result.instance_of?(Schema::Field)
+        field_def = types[result.type.unpack]&.fields&.dig(syntax.name)
+
+        return field_def
+      end
+
+      result.fields[syntax.name]
     end
   end
 end

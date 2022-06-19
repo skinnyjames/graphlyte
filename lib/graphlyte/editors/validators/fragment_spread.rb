@@ -28,10 +28,10 @@ module Graphlyte
         def validate_scope(fragment, parent = spread.context.parent)
           new_path = [*spread.context.path.dup[0..-2], fragment.subject]
 
-          defn = SchemaHelpers.type_definition(schema, path: new_path)
+          defn = schema.type_definition(new_path)
           return unless defn.nil?
 
-          parentdefn = SchemaHelpers.type_definition(schema, path: [spread.context.parent])
+          parentdefn = schema.type_definition([spread.context.parent])
 
           if parentdefn.nil?
             spread.subject.errors << "#{fragment.subject.type_name} target #{spread.parent_name} does not exist"
