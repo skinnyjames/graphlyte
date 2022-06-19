@@ -31,7 +31,7 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
     ERRORS
   end
 
-  it 'throws if fragment spread targets are not defined' do
+  it 'throws if fragment spread targets are not defined', :focus do
     query = Graphlyte.parse <<~GQL
       query something {
         ...fragmentOne
@@ -51,7 +51,12 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       Error on something
         fragmentOne
       1.) target Foobar not found
-      2.) target Foobar must be kind of UNION, INTERFACE, or OBJECT
+      2.) Foobar is not defined on Query
+      3.) target Foobar must be kind of UNION, INTERFACE, or OBJECT
+
+      Error on fragmentOne
+        fragmentTwo
+      1.) Todo target Foobar does not exist
 
       Error on fragmentTwo
         Foobar
@@ -80,7 +85,8 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
     expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
       Error on query
         fragmentOne
-      1.) target String must be kind of UNION, INTERFACE, or OBJECT
+      1.) String is not defined on Query
+      2.) target String must be kind of UNION, INTERFACE, or OBJECT
 
       Error on fragmentOne
         id
@@ -139,7 +145,7 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
   end
 
   context 'Fragment spread is possible' do
-    it 'object spreads in object scope', :focus do
+    it 'object spreads in object scope' do
       query = Graphlyte.parse <<~GQL
         query query { 
           ...fragmentOne
@@ -159,6 +165,26 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
           Done
             status
         1.) field status is not defined on Done
+      ERRROS
+    end
+
+    it 'spread object spreads in object scope', :focus do
+      query = Graphlyte.parse <<~GQL
+        query query {
+          ...fragmentOne
+        }
+      
+        fragment fragmentOne on Todo {
+          ...fragmentTwo
+        }
+
+        fragment fragmentTwo on Done { id }
+      GQL
+
+      expect(query.validate(schema).validation_errors).to eql(<<~ERRROS)
+        Error on fragmentOne
+          fragmentTwo
+        1.) Done is not defined on Todo
       ERRROS
     end
   end
