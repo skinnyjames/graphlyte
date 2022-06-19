@@ -55,8 +55,9 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
 
       Error on fragmentTwo
         Foobar
-      1.) inline target Foobar not found
-      2.) inline target Foobar must be kind of UNION, INTERFACE, or OBJECT
+      1.) Foobar is not defined on Todo
+      2.) inline target Foobar not found
+      3.) inline target Foobar must be kind of UNION, INTERFACE, or OBJECT
 
       Error on fragmentTwo
         Foobar
@@ -135,5 +136,30 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       Error on fragmentThree
       1.) Circular reference: fragmentThree > fragmentOne > fragmentTwo > fragmentThree
     ERRORS
+  end
+
+  context 'Fragment spread is possible' do
+    it 'object spreads in object scope', :focus do
+      query = Graphlyte.parse <<~GQL
+        query query { 
+          ...fragmentOne
+        }
+      
+        fragment fragmentOne on Todo {
+          ... on Done { status  }
+        }
+      GQL
+
+      expect(query.validate(schema).validation_errors).to eql(<<~ERRROS)
+        Error on fragmentOne
+          Done
+        1.) Done is not defined on Todo
+
+        Error on fragmentOne
+          Done
+            status
+        1.) field status is not defined on Done
+      ERRROS
+    end
   end
 end

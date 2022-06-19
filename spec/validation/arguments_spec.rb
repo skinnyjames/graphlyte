@@ -55,7 +55,7 @@ RSpec.describe 'Argument validation', :requests, :mocks do
     ERRORS
   end
 
-  it 'ensures argument name definitions', :focus do
+  it 'ensures argument name definitions' do
     query = Graphlyte.parse <<~GQL
       query query { 
         allTodos(foo: {}) { id }

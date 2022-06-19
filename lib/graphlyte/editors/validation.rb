@@ -33,6 +33,14 @@ module Graphlyte
                    schema.types[syntax.type.camelize_upper]
                  when Syntax::Fragment
                    schema.types[syntax.type_name]
+                 when Syntax::InlineFragment
+                   if result.name == syntax.type_name
+                     result
+                   else
+                    result.fields[syntax.type_name]
+                   end
+                 when Syntax::FragmentSpread
+                   one = :two
                  when Syntax::Field
                    resolve_field_schema(result, syntax, schema: schema)
                  when Syntax::Argument

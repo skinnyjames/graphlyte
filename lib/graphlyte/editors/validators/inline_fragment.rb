@@ -13,11 +13,22 @@ module Graphlyte
         end
 
         def annotate
+          defn = inline.type_definition(schema)
           type = inline.subject.type_name
-          inline.subject.errors << "inline target #{type} not found" unless schema.types[type]
+
+          validate_scope(defn)
+          validate_inline_target(type)
           return if valid_fragment_type?(type)
 
           inline.subject.errors << "inline target #{type} must be kind of UNION, INTERFACE, or OBJECT"
+        end
+
+        def validate_scope(defn)
+          inline.subject.errors << "#{inline.subject.type_name} is not defined on #{inline.parent_name}" unless defn
+        end
+
+        def validate_inline_target(type)
+          inline.subject.errors << "inline target #{type} not found" unless schema.types[type]
         end
 
         def valid_fragment_type?(type_name)

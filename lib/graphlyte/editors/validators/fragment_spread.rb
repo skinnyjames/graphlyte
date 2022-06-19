@@ -23,6 +23,10 @@ module Graphlyte
           spread.subject.errors << "target #{fragment.type_name} must be kind of UNION, INTERFACE, or OBJECT"
         end
 
+        def scope_valid?
+
+        end
+
         def matching_fragment
           grouped_fragment_subjects[spread.subject.name]
         end
