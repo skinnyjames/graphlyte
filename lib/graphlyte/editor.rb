@@ -151,19 +151,44 @@ module Graphlyte
 
         object.arguments = object.arguments&.flat_map do |arg|
           edit(arg) do |_a|
-            arg.value = edit_value(arg.value).first
+            arg.value = if arg.value.instance_of?(Syntax::InputObject)
+                          edit_input_object(arg.value)
+                        else
+                          edit_value(arg.value).first
+                        end
+
             raise Deleted if arg.value.nil?
           end
         end
+      end
+
+      # todo: reduce duplication of logic with #edit_arguments
+      def edit_input_object(object)
+        return unless object.respond_to?(:values)
+
+        edit(object) do
+          object.values = object.values&.flat_map do |obj|
+            edit(obj) do |_i|
+              obj.value = if obj.value.is_a?(Syntax::InputObject)
+                            edit_input_object(obj.value)
+                          else
+                            edit_value(obj.value).first
+                          end
+            end
+          end
+        end
+
+        object
       end
 
       def edit_value(object)
         case object
         when Array
           [object.flat_map { edit_value(_1) }]
+        # TODO: should be unused
         when Hash
           [
-            object.to_a.flat_map do |(k, old_value)|
+            object.values.flat_map do |(k, old_value)|
               edit_value(old_value).take(1).map do |new_value|
                 [k, new_value]
               end
@@ -209,6 +234,15 @@ module Graphlyte
     def on_value(&block)
       @hooks[Syntax::Value] = block
       self
+    end
+
+    def on_input_object(&block)
+      @hooks[Syntax::InputObject] = block
+      self
+    end
+
+    def on_input_object_arg(&block)
+      @hooks[Syntax::InputObjectArgument] = block
     end
 
     def on_argument(&block)

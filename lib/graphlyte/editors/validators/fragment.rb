@@ -61,11 +61,11 @@ module Graphlyte
           return results if fields.empty?
 
           fields.each do |field|
-            if field.instance_of?(Syntax::FragmentSpread)
-              results << field.name
+            next unless field.instance_of?(Syntax::FragmentSpread)
+
+            results << field.name
             # else
             #   get_spread_descendants(field.selection, results)
-            end
           end
 
           results

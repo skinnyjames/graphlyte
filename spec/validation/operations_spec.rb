@@ -22,13 +22,8 @@ RSpec.describe 'Operation validation', :requests, :mocks do
       }
     GQL
 
-    query.validate(schema)
-
-    expect(query.validation_errors).to eql((<<~ERRORS * 2).chomp)
-      Error on operationOne
-      1.) ambiguous operation name operationOne
-
-    ERRORS
+    errors = [{ message: 'ambiguous operation name operationOne', path: %w[operationOne] }]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'throws on mixing named and anonymous operations' do
@@ -42,11 +37,7 @@ RSpec.describe 'Operation validation', :requests, :mocks do
       }
     GQL
 
-    query.validate(schema)
-
-    expect(query.validation_errors).to eql(<<~ERRORS)
-      Error on document
-      1.) cannot mix anonymous and named operations
-    ERRORS
+    errors = [{ message: 'cannot mix anonymous and named operations', path: %w[document] }]
+    expect(query).to produce_errors(schema, errors)
   end
 end

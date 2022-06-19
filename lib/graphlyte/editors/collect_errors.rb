@@ -11,6 +11,10 @@ module Graphlyte
         @errors = []
       end
 
+      def unique_errors
+        errors.uniq
+      end
+
       def edit(doc)
         handle_errors(doc, Struct.new(:path).new([Struct.new(:name).new('document')]))
 
@@ -27,37 +31,37 @@ module Graphlyte
           .on_fragment_spread(&method(:handle_errors))
           .on_field(&method(:handle_errors))
           .on_argument(&method(:handle_errors))
+          .on_input_object(&method(:handle_errors))
           .on_value(&method(:handle_errors))
       end
 
       def handle_errors(syntax, context)
         return unless syntax.errors.any?
 
-        path = context.path.map do |obj|
+        paths = context.path.reject { |path| path.instance_of?(Syntax::InputObject) }
+
+        path = paths.map do |obj|
           case obj
           when Syntax::Value
-            obj.value
+            case obj.value
+            when Syntax::Literal, Symbol
+              obj.value.to_s
+            else
+              obj.value
+            end
           else
             obj.respond_to?(:name) ? (obj.name || obj.type_name) : obj.type_name
           end
         end
 
-        errors << <<~ERROR
-          Error on #{readable_path(path)}\n#{readable_errors(syntax.errors)}
-        ERROR
-      end
+        mapped_error = syntax.errors.map do |error|
+          {
+            message: error,
+            path: path
+          }
+        end
 
-      def readable_errors(errors)
-        errors.each_with_index.map { |e, i| "#{i + 1}.) #{e}" }.join("\n")
-      end
-
-      def readable_path(path, str = [], space = 0)
-        return str.join("\n") if path.empty?
-
-        name = path.shift
-        str << "#{' ' * space}#{name}"
-
-        readable_path(path, str, space + 2)
+        errors.concat(mapped_error)
       end
     end
   end

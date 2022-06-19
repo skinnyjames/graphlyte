@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Fragment validation', :requests, :mocks do
+RSpec.describe 'Fragment validation', :requests, :mocks, :focus do
   let(:schema) do
     Graphlyte.load_schema do |query|
       request(query)
@@ -22,13 +22,8 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
-      Error on fragmentOne
-      1.) ambiguous name fragmentOne
-
-      Error on fragmentOne
-      1.) ambiguous name fragmentOne
-    ERRORS
+    errors = [{ message: 'ambiguous name fragmentOne', path: %w[fragmentOne] }]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'throws if fragment spread targets are not defined' do
@@ -47,22 +42,18 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
-      Error on something
-        fragmentOne
-      1.) target Foobar not found
-      2.) target Foobar must be kind of UNION, INTERFACE, or OBJECT
+    errors = [
+      { message: 'target Foobar not found', path: %w[something fragmentOne] },
+      { message: 'Foobar is not defined on Query', path: %w[something fragmentOne] },
+      { message: 'target Foobar must be kind of UNION, INTERFACE, or OBJECT', path: %w[something fragmentOne] },
+      { message: 'Todo target Foobar does not exist', path: %w[fragmentOne fragmentTwo] },
+      { message: 'Foobar is not defined on Todo', path: %w[fragmentTwo Foobar] },
+      { message: 'inline target Foobar not found', path: %w[fragmentTwo Foobar] },
+      { message: 'inline target Foobar must be kind of UNION, INTERFACE, or OBJECT', path: %w[fragmentTwo Foobar] },
+      { message: 'field id is not defined on Foobar', path: %w[fragmentTwo Foobar id]}
+    ]
 
-      Error on fragmentTwo
-        Foobar
-      1.) inline target Foobar not found
-      2.) inline target Foobar must be kind of UNION, INTERFACE, or OBJECT
-
-      Error on fragmentTwo
-        Foobar
-          id
-      1.) field id is not defined on Foobar
-    ERRORS
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'throws if fragment type is a scalar' do
@@ -76,15 +67,13 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
-      Error on query
-        fragmentOne
-      1.) target String must be kind of UNION, INTERFACE, or OBJECT
+    errors = [
+      { message: 'String is not defined on Query', path: %w[query fragmentOne] },
+      { message: 'target String must be kind of UNION, INTERFACE, or OBJECT', path: %w[query fragmentOne] },
+      { message: 'field id is not defined on String', path: %w[fragmentOne id] }
+    ]
 
-      Error on fragmentOne
-        id
-      1.) field id is not defined on String
-    ERRORS
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'throws on unused fragments' do
@@ -100,10 +89,8 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
-      Error on one
-      1.) fragment must be used
-    ERRORS
+    errors = [{ message: 'fragment must be used', path: %w[one] }]
+    expect(query).to produce_errors(schema, errors)
   end
 
   it 'throws on circular fragment spreads' do
@@ -125,15 +112,50 @@ RSpec.describe 'Fragment validation', :requests, :mocks do
       }
     GQL
 
-    expect(query.validate(schema).validation_errors).to eql(<<~ERRORS)
-      Error on fragmentOne
-      1.) Circular reference: fragmentOne > fragmentTwo > fragmentThree > fragmentOne
+    errors = [
+      { message: 'Circular reference: fragmentOne > fragmentTwo > fragmentThree > fragmentOne', path: %w[fragmentOne] },
+      { message: 'Circular reference: fragmentTwo > fragmentThree > fragmentOne > fragmentTwo', path: %w[fragmentTwo] },
+      { message: 'Circular reference: fragmentThree > fragmentOne > fragmentTwo > fragmentThree', path: %w[fragmentThree] }
+    ]
 
-      Error on fragmentTwo
-      1.) Circular reference: fragmentTwo > fragmentThree > fragmentOne > fragmentTwo
+    expect(query).to produce_errors(schema, errors)
+  end
 
-      Error on fragmentThree
-      1.) Circular reference: fragmentThree > fragmentOne > fragmentTwo > fragmentThree
-    ERRORS
+  context 'Fragment spread is possible' do
+    it 'object spreads in object scope' do
+      query = Graphlyte.parse <<~GQL
+        query query { 
+          ...fragmentOne
+        }
+      
+        fragment fragmentOne on Todo {
+          ... on Done { status  }
+        }
+      GQL
+
+      errors = [
+        { message: 'Done is not defined on Todo', path: %w[fragmentOne Done] },
+        { message: 'field status is not defined on Done', path: %w[fragmentOne Done status] } # or is it?
+      ]
+
+      expect(query).to produce_errors(schema, errors)
+    end
+
+    it 'spread object spreads in object scope' do
+      query = Graphlyte.parse <<~GQL
+        query query {
+          ...fragmentOne
+        }
+      
+        fragment fragmentOne on Todo {
+          ...fragmentTwo
+        }
+
+        fragment fragmentTwo on Done { id }
+      GQL
+
+      errors = [{ message: 'Done is not defined on Todo', path: %w[fragmentOne fragmentTwo] }]
+      expect(query).to produce_errors(schema, errors)
+    end
   end
 end
