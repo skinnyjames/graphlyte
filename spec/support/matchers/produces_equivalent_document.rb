@@ -228,7 +228,7 @@ RSpec::Matchers.define :match_parse do
   end
 
   failure_message do |str|
-    "Expected #{@expected.to_s} to match #{str}"
+    "Expected #{@expected} to match #{str}"
   end
 end
 
