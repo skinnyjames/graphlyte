@@ -220,6 +220,18 @@ RSpec::Matchers.define :be_equivalent_to do |expected|
   end
 end
 
+RSpec::Matchers.define :match_parse do
+  match do |str|
+    @expected = Graphlyte.parse(str)
+
+    str.chomp == @expected.to_s
+  end
+
+  failure_message do |str|
+    "Expected #{@expected.to_s} to match #{str}"
+  end
+end
+
 RSpec::Matchers.define :parse_like do |str|
   match do |actual|
     @expected = Graphlyte.parse(str)
