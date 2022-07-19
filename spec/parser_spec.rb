@@ -179,6 +179,32 @@ describe Graphlyte::Parser do
     end
   end
 
+  context 'parse variable definitions' do
+    it 'parses non-null types' do
+      gql = <<~GQL
+        query($id: ID!) { id }
+      GQL
+
+      expect(gql).to match_parse
+    end
+
+    it 'parses list types with non-null values' do
+      gql = <<~GQL
+        query($id: [ID!]) { id }
+      GQL
+
+      expect(gql).to match_parse
+    end
+
+    it 'parses non-null list types with non-null values' do
+      gql = <<~GQL
+        query($id: [ID!]!) { id }
+      GQL
+
+      expect(gql).to match_parse
+    end
+  end
+
   context 'when fields are deeply nested' do
     let(:gql) do
       <<-GQL
