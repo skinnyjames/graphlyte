@@ -198,7 +198,7 @@ module Graphlyte
 
           var.variable = variable_name
           expect(:PUNCTUATOR, ':')
-          var.type = type_name
+          var.type = one_of(:list_type_name, :type_name)
 
           var.default_value = optional { default_value }
           var.directives = directives
@@ -220,11 +220,12 @@ module Graphlyte
       name
     end
 
-    def type_name
-      ty = one_of(-> { Graphlyte::Syntax::Type.new(name) }, :list_type_name)
+    def type_name(list: false)
+      ty = Graphlyte::Syntax::Type.new(name)
 
       t = peek(offset: 1)
       ty.non_null = t.punctuator?('!')
+      ty.is_list = list
       advance if ty.non_null
 
       ty
@@ -238,9 +239,12 @@ module Graphlyte
     end
 
     def list_type_name
-      advance
+      type = bracket('[', ']') { type_name(list: true) }
+      t = peek(offset: 1)
+      type.non_null_list = t.punctuator?('!')
+      advance if type.non_null_list
 
-      bracket('[', ']') { type_name }
+      type
     end
 
     def fragment

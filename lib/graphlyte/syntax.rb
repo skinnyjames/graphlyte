@@ -165,13 +165,14 @@ module Graphlyte
     # A reference to a type, possibly containing other types.
     # See: https://spec.graphql.org/October2021/#sec-Type-References
     class Type < Graphlyte::Data
-      attr_accessor :inner, :is_list, :non_null
+      attr_accessor :inner, :is_list, :non_null, :non_null_list
 
       def initialize(name = nil, **kwargs)
         super(**kwargs)
         @inner ||= name
         @is_list ||= false
         @non_null ||= false
+        @non_null_list ||= false
       end
 
       # Used during value->type inference
@@ -185,8 +186,9 @@ module Graphlyte
 
       def to_s
         str = inner.to_s
+        str = "#{str}!" if non_null
         str = "[#{str}]" if is_list
-        str += '!' if non_null
+        str += '!' if non_null_list
 
         str
       end
