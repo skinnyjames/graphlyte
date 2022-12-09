@@ -6,6 +6,7 @@ test.rb
 /public/
 .yardoc/
 coverage
+.idea/
 
 .bundle
 nohup.out
