@@ -22,8 +22,8 @@ module Mocks
   def start_graphql_server
     File.truncate(LOG_FILE, 0) if File.exist?(LOG_FILE)
 
-    command = %w[json-graphql-server fixture/mocks.json --p 5000]
-    server_pid = spawn(*command, %i[err out] => [LOG_FILE, 'w'])
+    command = %w[npm run serve]
+    server_pid = spawn(*command, %i[err out] => [LOG_FILE, 'w'], chdir: "#{__dir__}/../../../fixture")
 
     wait_for_server
 

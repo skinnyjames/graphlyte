@@ -2,7 +2,7 @@ image: "timbru31/ruby-node:latest"
 
 before_script:
   - bundle install
-  - npm i -g json-graphql-server@2.2.3
+  - cd fixture && npm i && cd ..
 
 rspec:
   variables:
